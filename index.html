@@ -1,0 +1,2570 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrimoine Immobilier — Gestion Mensuelle</title>
+<!-- v1779971800 -->
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bl:#003F87;--bl2:#1557b0;--bl3:#3b82d4;--bl4:#dce8f8;--bl5:#f0f5fc;
+  --bg:#f0f4fa;--surf:#fff;--brd:#d0d9ec;--tx:#0d1a35;--mu:#6272a0;
+  --gr:#0f7a45;--gr2:#d1f0e0;--rd:#c0392b;--rd2:#fce8e6;
+  --or:#c96a00;--or2:#fef3e2;--go:#9a6f00;--go2:#fdf4d4;
+  --si:210px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;font-size:14px;}
+
+/* ── SIDEBAR ── */
+#sb{width:var(--si);flex-shrink:0;background:var(--bl);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;overflow-y:auto;}
+.sb-logo{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+.sb-logo h1{font-size:14px;font-weight:800;color:#fff;line-height:1.3;}
+.sb-logo p{font-size:9px;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace;margin-top:2px;letter-spacing:.05em;}
+.sb-sec{padding:14px 18px 4px;font-size:9px;color:rgba(255,255,255,.3);font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;}
+.sb-nav{display:flex;flex-direction:column;}
+.sb-a{display:flex;align-items:center;gap:9px;padding:10px 18px;cursor:pointer;color:rgba(255,255,255,.65);font-size:12.5px;font-weight:500;border-left:3px solid transparent;transition:all .12s;text-decoration:none;}
+.sb-a:hover{background:rgba(255,255,255,.07);color:#fff;}
+.sb-a.on{background:rgba(255,255,255,.13);color:#fff;border-left-color:rgba(255,255,255,.75);}
+.sb-a .ic{width:18px;text-align:center;font-size:14px;}
+.sb-bot{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);}
+.sb-mini{background:rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.sb-mini .sl{font-size:9px;color:rgba(255,255,255,.4);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em;}
+.sb-mini .sv{font-size:16px;font-weight:700;margin-top:2px;}
+
+/* ── MAIN ── */
+#mn{margin-left:var(--si);flex:1;display:flex;flex-direction:column;}
+
+/* ── MONTH NAV BAR ── */
+.mbar{background:var(--surf);border-bottom:2px solid var(--bl4);position:sticky;top:0;z-index:50;}
+.mbar-top{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:52px;border-bottom:1px solid var(--brd);}
+.mbar-title{font-size:15px;font-weight:700;color:var(--bl);}
+.mbar-actions{display:flex;gap:8px;align-items:center;}
+.mbar-months{display:flex;align-items:center;padding:0 20px;gap:4px;overflow-x:auto;height:46px;}
+.mbar-months::-webkit-scrollbar{height:3px;}
+.mbar-months::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px;}
+.m-btn{flex-shrink:0;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;border:1.5px solid var(--brd);background:transparent;color:var(--mu);transition:all .15s;position:relative;}
+.m-btn:hover{border-color:var(--bl3);color:var(--bl);background:var(--bl5);}
+.m-btn.on{background:var(--bl);color:#fff;border-color:var(--bl);}
+.m-btn .m-dot{width:6px;height:6px;border-radius:50%;position:absolute;top:3px;right:4px;}
+.m-btn .m-dot.gr{background:#4ade80;}
+.m-btn .m-dot.or{background:#fb923c;}
+.m-btn .m-dot.rd{background:#f87171;}
+.m-nav-prev,.m-nav-next{background:none;border:1px solid var(--brd);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--mu);flex-shrink:0;}
+.m-nav-prev:hover,.m-nav-next:hover{background:var(--bl4);color:var(--bl);}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--brd);background:var(--surf);padding:0 28px;}
+.tab{padding:10px 18px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .12s;white-space:nowrap;}
+.tab:hover{color:var(--bl);}
+.tab.on{color:var(--bl);border-bottom-color:var(--bl);font-weight:700;}
+
+/* ── PAGE CONTENT ── */
+.pg{display:none;padding:24px 28px 48px;}
+.pg.on{display:block;animation:up .18s ease;}
+@keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SECTION TITLE ── */
+.st{font-size:13.5px;font-weight:700;color:var(--bl);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:2px solid var(--bl4);}
+
+/* ── MONTH HEADER BAND ── */
+.month-band{background:var(--bl);border-radius:12px;padding:18px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.mb-item{text-align:center;flex:1;}
+.mb-l{font-size:9px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;}
+.mb-v{font-size:20px;font-weight:800;color:#fff;}
+.mb-v.g{color:#6ee3a5;} .mb-v.r{color:#f87171;} .mb-v.o{color:#fbbf24;}
+.mb-sep{width:1px;height:42px;background:rgba(255,255,255,.15);flex-shrink:0;}
+
+/* ── KPI ── */
+.kg{display:grid;gap:12px;margin-bottom:20px;}
+.k4{grid-template-columns:repeat(4,1fr);}
+.k3{grid-template-columns:repeat(3,1fr);}
+.k2{grid-template-columns:repeat(2,1fr);}
+.kc{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:15px 14px;border-top:3px solid var(--kcc,var(--bl));}
+.kc .kl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.07em;font-family:'JetBrains Mono',monospace;margin-bottom:5px;}
+.kc .kv{font-size:clamp(16px,1.6vw,22px);font-weight:700;color:var(--kcc,var(--tx));line-height:1.1;}
+.kc .ks{font-size:10px;color:var(--mu);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+
+/* ── ANNUAL OVERVIEW GRID ── */
+.ann-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.ann-card{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;position:relative;}
+.ann-card:hover{border-color:var(--bl3);box-shadow:0 2px 12px rgba(0,63,135,0.1);}
+.ann-card.on{border-color:var(--bl);box-shadow:0 0 0 2px var(--bl4);}
+.ann-card .am{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--bl);margin-bottom:6px;}
+.ann-card .ae{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;}
+.ann-card .ad{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:2px;}
+.ann-card .acf{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:6px;padding-top:6px;border-top:1px solid var(--brd);}
+.ann-card .abar{height:4px;background:var(--brd);border-radius:2px;margin-top:6px;overflow:hidden;}
+.ann-card .abar-f{height:100%;border-radius:2px;background:var(--gr);}
+.ann-card .astatus{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;}
+
+/* ── LOYER CARDS ── */
+.lc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;margin-bottom:20px;}
+.lc{background:var(--surf);border:1px solid var(--brd);border-radius:10px;overflow:hidden;transition:box-shadow .15s;}
+.lc:hover{box-shadow:0 3px 14px rgba(0,63,135,0.09);}
+.lc-h{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--brd);}
+.lc-h .ln{font-weight:700;font-size:12.5px;color:var(--bl);}
+.lc-h .la{font-size:10px;color:var(--mu);font-family:'JetBrains Mono',monospace;}
+.lc-b{padding:11px 14px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;}
+.lc-loy{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--tx);}
+.lc-loy-sub{font-size:10px;color:var(--mu);font-family:'JetBrains Mono',monospace;}
+.lc-fields{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.lc-inp{border:1px solid var(--brd);border-radius:6px;padding:6px 8px;font-size:11.5px;font-family:'JetBrains Mono',monospace;background:var(--bg);outline:none;width:100%;transition:border-color .12s;color:var(--tx);}
+.lc-inp:focus{border-color:var(--bl3);background:#fff;}
+.lc-inp.err{border-color:var(--rd);background:var(--rd2);}
+.lc-inp.ok{border-color:var(--gr);}
+.lc-f{padding:8px 14px;background:#fafbfd;border-top:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.st-btns{display:flex;gap:4px;flex-wrap:wrap;}
+.sb2{border:1.5px solid var(--brd);background:var(--surf);border-radius:16px;padding:3px 9px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .12s;white-space:nowrap;}
+.sb2.s-enc{background:var(--gr2);border-color:var(--gr);color:var(--gr);}
+.sb2.s-par{background:var(--or2);border-color:var(--or);color:var(--or);}
+.sb2.s-ret{background:var(--go2);border-color:var(--go);color:var(--go);}
+.sb2.s-imp{background:var(--rd2);border-color:var(--rd);color:var(--rd);}
+.sb2.s-vac{background:#e8ecf5;border-color:#8b97b0;color:#4a5568;}
+.ecart-lbl{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;}
+
+/* ── PROGRESS ── */
+.prog-wrap{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;}
+.prog-bar{flex:1;height:8px;background:var(--brd);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;background:var(--gr);transition:width .4s;}
+.prog-txt{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--bl);white-space:nowrap;min-width:40px;text-align:right;}
+
+/* ── TABLE ── */
+.tw{background:var(--surf);border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+.tw table{width:100%;border-collapse:collapse;}
+.tw thead th{background:var(--bl);color:#fff;padding:9px 12px;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.07em;text-align:left;white-space:nowrap;}
+.tw thead th:not(:first-child){text-align:right;}
+.tw tbody td{padding:9px 12px;font-size:12.5px;border-bottom:1px solid var(--brd);vertical-align:middle;}
+.tw tbody tr:last-child td{border-bottom:none;}
+.tw tbody tr:nth-child(even) td{background:#fafbfd;}
+.tw tbody tr:hover td{background:var(--bl5)!important;}
+.tw td:not(:first-child){text-align:right;font-family:'JetBrains Mono',monospace;font-size:11.5px;}
+.tw-tot td{background:var(--bl4)!important;border-top:2px solid var(--bl)!important;font-weight:700;color:var(--bl);}
+
+/* ── FORM ── */
+.fbox{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:18px;margin-bottom:16px;}
+.fbox-t{font-weight:700;font-size:13px;color:var(--bl);margin-bottom:12px;display:flex;align-items:center;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--brd);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.fg4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mu);font-family:'JetBrains Mono',monospace;}
+.fg input,.fg select,.fg textarea{background:var(--bg);border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Sora',sans-serif;color:var(--tx);outline:none;transition:border-color .12s;}
+.fg input:focus,.fg select:focus{border-color:var(--bl3);background:#fff;}
+.fa{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd);}
+
+/* ── DEP LIST ── */
+.dep-row{background:var(--surf);border:1px solid var(--brd);border-radius:9px;padding:11px 14px;display:grid;grid-template-columns:34px 1fr auto auto auto;align-items:center;gap:10px;margin-bottom:6px;}
+.dep-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.dep-inf .dn{font-weight:600;font-size:12.5px;}
+.dep-inf .da{font-size:10px;color:var(--mu);font-family:'JetBrains Mono',monospace;margin-top:1px;}
+.dep-m{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--rd);}
+
+/* ── BADGE ── */
+.bd{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:16px;font-size:10.5px;font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.bg{background:var(--gr2);color:var(--gr);}
+.br{background:var(--rd2);color:var(--rd);}
+.bo{background:var(--or2);color:var(--or);}
+.bb{background:var(--bl4);color:var(--bl);}
+.bk{background:#e8ecf5;color:var(--mu);}
+.pos{color:var(--gr);font-weight:700;} .neg{color:var(--rd);font-weight:700;} .neu{color:var(--or);font-weight:700;}
+
+/* ── CHART ── */
+.card{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:16px;}
+.card h3{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);font-family:'JetBrains Mono',monospace;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--brd);}
+.ch{height:230px;position:relative;}
+.ch-lg{height:270px;position:relative;}
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+
+/* ── BUTTON ── */
+.btn{border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;font-family:'Sora',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .12s;}
+.btn-p{background:var(--bl);color:#fff;} .btn-p:hover{background:var(--bl2);}
+.btn-s{background:var(--bl5);color:var(--bl);border:1px solid var(--brd);} .btn-s:hover{background:var(--bl4);}
+.btn-r{background:var(--rd2);color:var(--rd);border:1px solid #f5b8b8;} .btn-r:hover{filter:brightness(.95);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-g{background:var(--gr2);color:var(--gr);border:1px solid #90d4aa;} .btn-g:hover{filter:brightness(.95);}
+
+/* ── TF TABLE ── */
+.tf-check-wrap{display:flex;align-items:center;justify-content:center;}
+input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl);}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;background:var(--gr);color:#fff;padding:11px 18px;border-radius:8px;font-size:12.5px;font-weight:600;display:none;box-shadow:0 4px 20px rgba(0,0,0,.18);animation:up .2s ease;}
+
+/* ── MODAL ── */
+.mo{display:none;position:fixed;inset:0;background:rgba(5,15,40,.4);z-index:300;align-items:center;justify-content:center;}
+.mo.on{display:flex;}
+.mo-box{background:var(--surf);border-radius:12px;padding:24px;width:min(540px,92vw);max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:up .18s ease;}
+.mo-title{font-size:16px;font-weight:700;color:var(--bl);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.mo-close{cursor:pointer;font-size:18px;color:var(--mu);}
+
+::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
+@media(max-width:1100px){.k4{grid-template-columns:repeat(2,1fr);}.ann-grid{grid-template-columns:repeat(3,1fr);}.cg2{grid-template-columns:1fr;}}
+@media(max-width:768px){#sb{width:50px;} #sb .sb-logo h1,#sb .sb-logo p,#sb .sb-a span,#sb .sb-sec,#sb .sb-bot .sl{display:none;} #mn{margin-left:50px;} .pg{padding:14px;} .k4,.k3{grid-template-columns:repeat(2,1fr);} .ann-grid{grid-template-columns:repeat(2,1fr);} .lc-grid{grid-template-columns:1fr;} .fg3,.fg4{grid-template-columns:1fr 1fr;}}
+
+/* ─── QUITTANCES ─── */
+.quitance-preview{
+  background:#fff;border:1px solid var(--brd);border-radius:10px;
+  padding:0;overflow:hidden;margin-bottom:16px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+}
+.q-header{
+  background:linear-gradient(135deg,#003F87 0%,#1557b0 100%);
+  padding:28px 36px 22px;position:relative;overflow:hidden;
+}
+.q-header::after{
+  content:'';position:absolute;right:-20px;top:-20px;
+  width:120px;height:120px;border-radius:50%;
+  background:rgba(255,255,255,0.06);
+}
+.q-header::before{
+  content:'';position:absolute;right:40px;bottom:-30px;
+  width:80px;height:80px;border-radius:50%;
+  background:rgba(255,255,255,0.04);
+}
+.q-header h2{font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;font-family:'Frank Ruhl Libre',serif;}
+.q-header .q-sub{font-size:11px;color:rgba(255,255,255,.6);font-family:monospace;letter-spacing:.06em;text-transform:uppercase;}
+.q-header .q-ref{
+  position:absolute;top:20px;right:36px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  border-radius:6px;padding:6px 14px;
+  font-size:12px;font-weight:700;color:#fff;font-family:monospace;
+}
+.q-body{padding:28px 36px;}
+.q-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
+.q-party-box{
+  background:#f5f7fc;border-radius:8px;padding:14px 16px;
+  border-left:3px solid var(--bl);
+}
+.q-party-box.right{border-left-color:#0f7a45;}
+.q-party-label{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;font-family:monospace;margin-bottom:6px;}
+.q-party-name{font-size:15px;font-weight:700;color:var(--tx);}
+.q-party-addr{font-size:12px;color:var(--mu);margin-top:3px;line-height:1.5;}
+.q-montant-box{
+  background:linear-gradient(135deg,#003F87,#1557b0);
+  border-radius:10px;padding:20px 24px;margin-bottom:20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.q-montant-box .qm-label{font-size:11px;color:rgba(255,255,255,.6);font-family:monospace;text-transform:uppercase;letter-spacing:.06em;}
+.q-montant-box .qm-val{font-size:28px;font-weight:900;color:#fff;font-family:'Frank Ruhl Libre',serif;}
+.q-montant-box .qm-lettres{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;font-style:italic;}
+.q-details-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+.q-details-table td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e8eef7;}
+.q-details-table td:first-child{color:var(--mu);width:40%;}
+.q-details-table td:last-child{font-weight:600;text-align:right;font-family:monospace;}
+.q-legal{
+  background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;
+  padding:12px 16px;font-size:11px;color:var(--mu);line-height:1.7;
+  font-style:italic;margin-bottom:20px;
+}
+.q-signature{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding-top:16px;border-top:1px solid #e8eef7;
+}
+.q-sig-left{font-size:12px;color:var(--mu);}
+.q-sig-right{text-align:right;}
+.q-sig-right .qs-name{font-weight:700;font-size:14px;color:var(--bl);}
+.q-sig-right .qs-qual{font-size:11px;color:var(--mu);}
+.q-footer{background:#f0f5fc;padding:12px 36px;display:flex;align-items:center;justify-content:space-between;}
+.q-footer .qf-txt{font-size:10px;color:var(--mu);font-family:monospace;}
+
+/* Écheancier */
+.ech-table tbody tr.paid td{background:#f0fdf4;}
+.ech-table tbody tr.late td{background:#fef2f2;}
+.ech-table tbody tr.pending td{background:#fffbeb;}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<nav id="sb">
+  <div class="sb-logo">
+    <h1>Patrimoine<br>Immobilier</h1>
+    <p>GESTION MENSUELLE 2025</p>
+  </div>
+  <div class="sb-sec">Tableau de bord</div>
+  <nav class="sb-nav">
+    <div class="sb-a on" data-page="annuel" onclick="goPage('annuel',this)"><span class="ic">📊</span><span>Vue Annuelle</span></div>
+    <div class="sb-a" data-page="loyers" onclick="goPage('loyers',this)"><span class="ic">🏠</span><span>Loyers du mois</span></div>
+    <div class="sb-a" data-page="depenses" onclick="goPage('depenses',this)"><span class="ic">💸</span><span>Dépenses du mois</span></div>
+    <div class="sb-a" data-page="resultat" onclick="goPage('resultat',this)"><span class="ic">📈</span><span>Résultat du mois</span></div>
+    <div class="sb-sec">Suivi</div>
+    <div class="sb-a" data-page="quittances" onclick="goPage('quittances',this)"><span class="ic">📄</span><span>Quittances</span></div>
+    <div class="sb-a" data-page="credits" onclick="goPage('credits',this)"><span class="ic">🏦</span><span>Crédits</span></div>
+    <div class="sb-a" data-page="historique" onclick="goPage('historique',this)"><span class="ic">📁</span><span>Historique</span></div>
+    <div class="sb-a" data-page="biens" onclick="goPage('biens',this)"><span class="ic">🏘️</span><span>Mes biens</span></div>
+  </nav>
+  <div class="sb-bot">
+    <div class="sb-mini">
+      <div class="sl">Loyers encaissés</div>
+      <div class="sv" id="sb-enc" style="color:#6ee3a5">—</div>
+    </div>
+    <div class="sb-mini">
+      <div class="sl">Dépenses saisies</div>
+      <div class="sv" id="sb-dep" style="color:#f87171">—</div>
+    </div>
+    <div class="sb-mini" style="margin:0">
+      <div class="sl">Résultat net réel</div>
+      <div class="sv" id="sb-net" style="color:#fbbf24">—</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════ MAIN ══════════ -->
+<div id="mn">
+
+  <!-- MONTH NAV BAR -->
+  <div class="mbar">
+    <div class="mbar-top">
+      <div class="mbar-title" id="pg-title">📊 Vue Annuelle 2025</div>
+      <div class="mbar-actions">
+        <button class="btn btn-s btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-p btn-sm" onclick="goPage('loyers',document.querySelector('[data-page=loyers]'))">✏️ Saisir ce mois</button>
+      </div>
+    </div>
+    <div class="mbar-months">
+      <button class="m-nav-prev" onclick="navMois(-1)">◀</button>
+      <div id="mois-btns" style="display:flex;gap:4px;"></div>
+      <button class="m-nav-next" onclick="navMois(1)">▶</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : VUE ANNUELLE
+  ════════════════════════════ -->
+  <div class="pg on" id="pg-annuel">
+    <div class="kg k4" style="margin-bottom:20px">
+      <div class="kc" style="--kcc:#003F87"><div class="kl">Loyers Prévus / An</div><div class="kv">503 995 €</div><div class="ks">~41 999 €/mois</div></div>
+      <div class="kc" style="--kcc:#c0392b"><div class="kl">Crédits / An</div><div class="kv">302 749 €</div><div class="ks">~25 229 €/mois</div></div>
+      <div class="kc" style="--kcc:#0f7a45"><div class="kl">Résultat Net Prévu</div><div class="kv" style="color:#0f7a45">+127 880 €</div><div class="ks">+10 657 €/mois</div></div>
+      <div class="kc" style="--kcc:#9a6f00"><div class="kl">Taxes Foncières</div><div class="kv">29 610 €</div><div class="ks">14 biens taxés</div></div>
+    </div>
+
+    <div class="st"><span>📅 Synthèse par Mois — cliquez un mois pour y accéder</span></div>
+    <div class="ann-grid" id="ann-grid"></div>
+
+    <div class="cg2">
+      <div class="card"><h3>Loyers · Crédits · Cash-Flow mensuel 2025</h3><div class="ch-lg"><canvas id="cA1"></canvas></div></div>
+      <div class="card"><h3>Encaissements réels vs Prévus</h3><div class="ch-lg"><canvas id="cA2"></canvas></div></div>
+    </div>
+    <div class="cg2">
+      <div class="card"><h3>Dépenses réelles par mois</h3><div class="ch"><canvas id="cA3"></canvas></div></div>
+      <div class="card"><h3>Résultat net réel par mois</h3><div class="ch"><canvas id="cA4"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : LOYERS DU MOIS
+  ════════════════════════════ -->
+  <div class="pg" id="pg-loyers">
+    <!-- Bande résumé mois -->
+    <div class="month-band">
+      <div class="mb-item"><div class="mb-l">Mois</div><div class="mb-v" id="loy-mois-label">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Attendus</div><div class="mb-v" id="loy-attendu">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Encaissés ✅</div><div class="mb-v g" id="loy-enc">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Manquant ⚠</div><div class="mb-v o" id="loy-man">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Impayés ❌</div><div class="mb-v r" id="loy-imp">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Progression</div><div class="mb-v" id="loy-pct">0%</div></div>
+    </div>
+
+    <div class="prog-wrap">
+      <div style="font-size:11px;color:var(--mu);font-family:'JetBrains Mono',monospace;white-space:nowrap;">Taux d'encaissement</div>
+      <div class="prog-bar"><div class="prog-fill" id="loy-prog-fill" style="width:0%"></div></div>
+      <div class="prog-txt" id="loy-prog-txt">0%</div>
+    </div>
+
+    <div class="st">
+      <span>🏠 Locataires — <span id="loy-mois-sub">—</span></span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-s btn-sm" onclick="cocheTout()">✅ Tout encaissé</button>
+        <button class="btn btn-g btn-sm" onclick="saveLoyers()">💾 Enregistrer</button>
+      </div>
+    </div>
+
+    <div class="lc-grid" id="lc-grid"></div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : DÉPENSES
+  ════════════════════════════ -->
+  <div class="pg" id="pg-depenses">
+    <div class="month-band">
+      <div class="mb-item"><div class="mb-l">Mois</div><div class="mb-v" id="dep-mois-label">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Total dépenses</div><div class="mb-v r" id="dep-total-v">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Charges / Syndic</div><div class="mb-v o" id="dep-ch-v">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Taxes Foncières</div><div class="mb-v o" id="dep-tf-v">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Eau / Élec / Gaz</div><div class="mb-v o" id="dep-eau-v">0 €</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Travaux / Divers</div><div class="mb-v o" id="dep-tra-v">0 €</div></div>
+    </div>
+
+    <!-- FORMULAIRE AJOUT DÉPENSE -->
+    <div class="fbox">
+      <div class="fbox-t">➕ Nouvelle Dépense — <span style="font-weight:400;font-size:12px;color:var(--mu)" id="dep-form-mois">—</span></div>
+      <div class="fg3" style="margin-bottom:10px">
+        <div class="fg"><label>Catégorie</label>
+          <select id="d-cat">
+            <option value="syndic">🏢 Syndic / Charges copropriété</option>
+            <option value="eau">💧 Eau</option>
+            <option value="elec">⚡ Électricité / Gaz</option>
+            <option value="assurance">🛡️ Assurance PNO / Habitation</option>
+            <option value="tf">🏛️ Taxe Foncière</option>
+            <option value="travaux">🔧 Travaux / Réparations</option>
+            <option value="entretien">🧹 Entretien / Ménage</option>
+            <option value="gestion">📋 Frais de gestion agence</option>
+            <option value="credit">🏦 Remboursement crédit</option>
+            <option value="divers">📎 Divers / Autres</option>
+          </select>
+        </div>
+        <div class="fg"><label>Bien / Entité</label>
+          <select id="d-bien"><option value="global">🌐 Global / Tous biens</option></select>
+        </div>
+        <div class="fg"><label>Fournisseur / Libellé</label>
+          <input type="text" id="d-lib" placeholder="Ex: EDF, Syndic de Gagny, Plombier…">
+        </div>
+      </div>
+      <div class="fg4" style="margin-bottom:10px">
+        <div class="fg"><label>Montant (€)</label>
+          <input type="number" id="d-mont" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="fg"><label>Date</label>
+          <input type="date" id="d-date">
+        </div>
+        <div class="fg"><label>Périodicité</label>
+          <select id="d-perio">
+            <option>Ponctuel</option><option>Mensuel</option><option>Trimestriel</option><option>Annuel</option>
+          </select>
+        </div>
+        <div class="fg"><label>Réf. Facture</label>
+          <input type="text" id="d-ref" placeholder="FAC-2025-…">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label>Note</label>
+        <input type="text" id="d-note" placeholder="Détails supplémentaires…">
+      </div>
+      <div class="fa">
+        <button class="btn btn-s" onclick="resetDep()">Effacer</button>
+        <button class="btn btn-p" onclick="addDep()">💾 Ajouter la dépense</button>
+      </div>
+    </div>
+
+    <!-- TAXES FONCIÈRES (rapide) -->
+    <details style="margin-bottom:16px">
+      <summary style="cursor:pointer;padding:12px 16px;background:var(--surf);border:1px solid var(--brd);border-radius:10px;font-weight:700;font-size:13px;color:var(--bl);list-style:none;display:flex;align-items:center;gap:8px;">
+        🏛️ Taxes Foncières — Paiement rapide <span style="font-size:11px;font-weight:400;color:var(--mu);margin-left:auto">Cliquer pour développer</span>
+      </summary>
+      <div style="border:1px solid var(--brd);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">
+        <div class="tw" style="border:none;border-radius:0;margin:0">
+          <table>
+            <thead><tr><th>Propriétaire</th><th>Ville</th><th>Montant</th><th style="text-align:center">Payer ce mois</th><th>Date</th><th>Statut</th></tr></thead>
+            <tbody id="tf-tb">
+              <tr><td>SCI SJ IMMO</td><td>Pantin</td><td>760 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="760" data-lib="TF — Pantin" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI SJ IMMO</td><td>Gagny</td><td>2 230 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="2230" data-lib="TF — Gagny" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI SJ IMMO</td><td>Bondy — Chemin de Fer</td><td>5 960 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="5960" data-lib="TF — Bondy CdF" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI SJ IMMO</td><td>PSB Local + Studios</td><td>1 560 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="1560" data-lib="TF — PSB Studios" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>BISMUTH S &amp; J</td><td>Livry-Gargan</td><td>4 030 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="4030" data-lib="TF — Livry-Gargan" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI VB IMMO</td><td>Drancy</td><td>2 200 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="2200" data-lib="TF — Drancy" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>BISMUTH Jacques</td><td>Romainville</td><td>720 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="720" data-lib="TF — Romainville" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>BISMUTH Jacques</td><td>Aulnay-sous-Bois</td><td>450 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="450" data-lib="TF — Aulnay" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI JML IMMO</td><td>Aulnay-sous-Bois</td><td>3 040 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="3040" data-lib="TF — JML Aulnay" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>BISMUTH Sophie</td><td>Villemomble</td><td>650 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="650" data-lib="TF — Villemomble" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI BOBI IMMO</td><td>PSB Albert Thomas</td><td>2 530 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="2530" data-lib="TF — PSB Albert Thomas" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI BOBI IMMO</td><td>Montfermeil</td><td>2 480 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="2480" data-lib="TF — Montfermeil" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI JML IMMO</td><td>Le Raincy</td><td>1 500 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="1500" data-lib="TF — Le Raincy" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+              <tr><td>SCI JML IMMO</td><td>Rue des Pyrénées</td><td>1 500 €</td><td style="text-align:center"><input type="checkbox" class="tfc" data-m="1500" data-lib="TF — Rue des Pyrénées" onchange="updateTF(this)"></td><td><input type="date" class="tf-date" style="border:1px solid var(--brd);border-radius:5px;padding:3px 7px;font-size:11px;background:var(--bg)"></td><td><span class="bd bk">En attente</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px 16px;display:flex;justify-content:flex-end;gap:8px;background:var(--bg)">
+          <button class="btn btn-p btn-sm" onclick="saveTF()">💾 Enregistrer les TF cochées en dépense</button>
+        </div>
+      </div>
+    </details>
+
+    <!-- LISTE DES DÉPENSES -->
+    <div class="st"><span>📋 Dépenses saisies — <span id="dep-list-mois">—</span></span>
+      <div style="display:flex;gap:6px">
+        <select id="dep-filter" onchange="renderDepList()" style="border:1px solid var(--brd);border-radius:7px;padding:5px 10px;font-size:12px;background:var(--surf);outline:none;">
+          <option value="">Toutes catégories</option>
+          <option value="syndic">Syndic</option><option value="eau">Eau</option>
+          <option value="elec">Électricité/Gaz</option><option value="assurance">Assurance</option>
+          <option value="tf">Taxe Foncière</option><option value="travaux">Travaux</option>
+          <option value="entretien">Entretien</option><option value="gestion">Gestion</option>
+          <option value="divers">Divers</option>
+        </select>
+      </div>
+    </div>
+    <div id="dep-list-container"></div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : RÉSULTAT DU MOIS
+  ════════════════════════════ -->
+  <div class="pg" id="pg-resultat">
+
+    <!-- BANDE GLOBALE -->
+    <div class="month-band" id="res-band">
+      <div class="mb-item"><div class="mb-l">Mois</div><div class="mb-v" id="res-mois-lbl">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Loyers Encaissés</div><div class="mb-v g" id="res-enc">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Crédits</div><div class="mb-v r" id="res-crd">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Dépenses Réelles</div><div class="mb-v o" id="res-dep">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">Résultat Net Réel</div><div class="mb-v" id="res-net">—</div></div>
+      <div class="mb-sep"></div>
+      <div class="mb-item"><div class="mb-l">vs Budget Prévu</div><div class="mb-v" id="res-vs">—</div></div>
+    </div>
+
+    <!-- ONGLETS DE VUE -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--brd);margin-bottom:18px;" id="res-tabs">
+      <div class="res-tab on" onclick="switchResTab('entite',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;color:var(--bl);border-bottom:2px solid var(--bl);margin-bottom:-2px;">Par Entité / SCI</div>
+      <div class="res-tab" onclick="switchResTab('bien',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;">Par Bien</div>
+      <div class="res-tab" onclick="switchResTab('depenses',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;">Dépenses</div>
+      <div class="res-tab" onclick="switchResTab('graphiques',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;">Graphiques</div>
+    </div>
+
+    <!-- VUE PAR ENTITÉ -->
+    <div id="res-view-entite">
+      <div id="res-entite-container"></div>
+    </div>
+
+    <!-- VUE PAR BIEN -->
+    <div id="res-view-bien" style="display:none">
+      <div class="tw">
+        <table>
+          <thead><tr><th>Bien / Locataire</th><th>SCI / Entité</th><th>Loyer Prévu</th><th>Encaissé</th><th>Crédit</th><th>Charges</th><th>CF Net Réel</th><th>Date</th><th>Statut</th></tr></thead>
+          <tbody id="res-loy-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VUE DÉPENSES -->
+    <div id="res-view-depenses" style="display:none">
+      <div class="tw">
+        <table>
+          <thead><tr><th>Catégorie</th><th>Bien / Entité</th><th>Libellé</th><th>Montant</th><th>Date</th><th>Note</th></tr></thead>
+          <tbody id="res-dep-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VUE GRAPHIQUES -->
+    <div id="res-view-graphiques" style="display:none">
+      <div class="cg2">
+        <div class="card"><h3>Cash-Flow Net par Entité — ce mois</h3><div class="ch-lg"><canvas id="cR1"></canvas></div></div>
+        <div class="card"><h3>Dépenses par catégorie</h3><div class="ch-lg"><canvas id="cR2"></canvas></div></div>
+      </div>
+      <div class="card" style="margin-top:14px"><h3>Loyers encaissés vs attendus — tous les biens</h3><div style="height:300px;position:relative"><canvas id="cR3"></canvas></div></div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : HISTORIQUE
+  ════════════════════════════ -->
+  <div class="pg" id="pg-historique">
+    <div class="st"><span>📁 Historique Complet</span>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="histo-search" placeholder="🔍 Rechercher…" style="border:1px solid var(--brd);border-radius:7px;padding:6px 11px;font-size:12px;background:var(--surf);outline:none;" oninput="renderHisto()">
+        <select id="histo-type" onchange="renderHisto()" style="border:1px solid var(--brd);border-radius:7px;padding:6px 10px;font-size:12px;background:var(--surf);outline:none;">
+          <option value="">Tout</option><option value="loyer">Loyers</option><option value="dep">Dépenses</option>
+        </select>
+        <button class="btn btn-s btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Date</th><th>Mois</th><th>Type</th><th>Bien / Entité</th><th>Détail</th><th>Prévu</th><th>Réel</th><th>Écart</th><th>Statut</th></tr></thead>
+        <tbody id="histo-tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : MES BIENS
+  ════════════════════════════ -->
+  <div class="pg" id="pg-biens">
+    <div class="st"><span>🏘️ Mes Biens Locatifs (44 unités)</span>
+      <button class="btn btn-p btn-sm" onclick="openModal('mo-bien')">+ Ajouter</button>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Bien / Locataire</th><th>Adresse</th><th>Entité</th><th>Type</th><th>Loyer</th><th>Crédit</th><th>Charges</th><th>Net/mois</th><th>Statut</th></tr></thead>
+        <tbody id="biens-tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE CREDITS -->
+  <div class="pg" id="pg-credits">
+    <div class="st">
+      <span>🏦 Crédits Immobiliers en Cours</span>
+      <button class="btn btn-p btn-sm" onclick="openModal('mo-credit')">+ Ajouter un crédit</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kg k3" style="margin-bottom:20px" id="cred-kpis">
+      <div class="kc" style="--kcc:#c0392b">
+        <div class="kl">Total Mensualités</div>
+        <div class="kv" id="cred-kpi-mens" style="color:#c0392b">—</div>
+        <div class="ks">Toutes entités</div>
+      </div>
+      <div class="kc" style="--kcc:#003F87">
+        <div class="kl">Capital Restant Total</div>
+        <div class="kv" id="cred-kpi-cap" style="color:#003F87">—</div>
+        <div class="ks">Estimation consolidée</div>
+      </div>
+      <div class="kc" style="--kcc:#0f7a45">
+        <div class="kl">Nombre de Crédits</div>
+        <div class="kv" id="cred-kpi-nb" style="color:#0f7a45">—</div>
+        <div class="ks">Actifs</div>
+      </div>
+    </div>
+
+    <!-- TABLE PAR ENTITE -->
+    <div id="cred-table-container"></div>
+  </div>
+
+
+  <!-- PAGE QUITTANCES -->
+  <div class="pg" id="pg-quittances">
+
+    <!-- CONFIG BAILLEUR (si pas encore renseigné) -->
+    <!-- FICHES BAILLEURS -->
+    <div id="bailleurs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px;"></div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--brd);margin-bottom:18px;">
+      <div class="q-tab on" onclick="switchQTab('generation',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;color:var(--bl);border-bottom:2px solid var(--bl);margin-bottom:-2px;">📄 Générer Quittances</div>
+      <div class="q-tab" onclick="switchQTab('echeancier',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;">📅 Échéancier</div>
+      <div class="q-tab" onclick="switchQTab('config-email',this)" style="padding:9px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--mu);border-bottom:2px solid transparent;margin-bottom:-2px;">✉️ Config. Email</div>
+    </div>
+
+    <!-- VUE GÉNÉRATION -->
+    <div id="q-view-generation">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13px;color:var(--mu);">Sélectionnez les locataires et générez leurs quittances pour <b id="q-mois-label">—</b></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-s btn-sm" onclick="selAllQuittances()">Tout sélectionner</button>
+          <button class="btn btn-p btn-sm" onclick="genAllSelected()">📄 Générer sélectionnés</button>
+          <button class="btn btn-sm" style="background:#0f7a45;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="sendAllSelected()">✉️ Envoyer par email</button>
+        </div>
+      </div>
+      <div id="q-list-container"></div>
+    </div>
+
+    <!-- VUE ÉCHÉANCIER -->
+    <div id="q-view-echeancier" style="display:none">
+      <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:13px;color:var(--mu);">Sélectionnez un locataire :</div>
+        <select id="ech-locataire-sel" onchange="buildEcheancier()" style="border:1px solid var(--brd);border-radius:7px;padding:7px 12px;font-size:13px;background:#fff;outline:none;min-width:220px;"></select>
+        <button class="btn btn-s btn-sm" onclick="exportEcheancier()">⬇ Export PDF</button>
+      </div>
+      <div id="ech-container"></div>
+    </div>
+
+    <!-- VUE CONFIG EMAIL -->
+    <div id="q-view-config-email" style="display:none">
+      <div class="fbox">
+        <div class="fbox-t">✉️ Configuration Envoi Email (Resend.com)</div>
+        <div class="fg2" style="gap:12px;margin-bottom:12px;">
+          <div class="fg"><label>Clé API Resend</label>
+            <input type="password" id="resend-key" placeholder="re_xxxxxxxxxxxx" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+          </div>
+          <div class="fg"><label>Email expéditeur</label>
+            <input type="email" id="resend-from" placeholder="quittances@votredomaine.com" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+          </div>
+        </div>
+        <div class="fg" style="margin-bottom:12px;"><label>Objet de l'email (quittance)</label>
+          <input type="text" id="resend-subject" value="Quittance de loyer — {mois} {annee}" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+        </div>
+        <div class="fg" style="margin-bottom:12px;"><label>Message accompagnant la quittance</label>
+          <textarea id="resend-body" rows="4" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Sora',sans-serif;background:var(--bg);outline:none;width:100%;resize:vertical;">Bonjour,
+
+Veuillez trouver ci-joint votre quittance de loyer pour le mois de {mois} {annee}.
+
+Cordialement,
+{bailleur}</textarea>
+        </div>
+        <div style="background:#fef3d4;border:1px solid #e8c96a;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:12px;color:#7a5500;font-weight:600;margin-bottom:4px;">⚠️ Configuration Resend requise</div>
+          <div style="font-size:11px;color:#9a6f00;line-height:1.6;">
+            1. Créez un compte gratuit sur <b>resend.com</b><br>
+            2. Vérifiez votre domaine ou utilisez l'email de test Resend<br>
+            3. Créez une API Key dans Settings → API Keys<br>
+            4. Collez la clé ci-dessus
+          </div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #90d4aa;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:12px;color:#0f7a45;font-weight:600;margin-bottom:4px;">📧 Relances automatiques impayés</div>
+          <div style="font-size:11px;color:#155e35;line-height:1.6;">
+            Les relances seront envoyées automatiquement après <b>15 jours</b> sans paiement.<br>
+            Objet : "⚠️ Relance - Loyer impayé - {mois} {annee}"
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd);">
+          <button class="btn btn-s btn-sm" onclick="testEmail()">🧪 Email de test</button>
+          <button class="btn btn-p btn-sm" onclick="saveEmailConfig()">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APERÇU QUITTANCE -->
+    <div id="q-preview-container" style="display:none;margin-top:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:var(--bl);">👁️ Aperçu de la quittance</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-s btn-sm" onclick="printQuittance()">🖨️ Imprimer / PDF</button>
+          <button class="btn btn-sm" style="background:#0f7a45;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="sendQuittanceEmail()">✉️ Envoyer par email</button>
+          <button class="btn btn-s btn-sm" onclick="document.getElementById('q-preview-container').style.display='none'">✕ Fermer</button>
+        </div>
+      </div>
+      <div id="q-preview-content"></div>
+    </div>
+
+  </div>
+
+
+</div><!-- /mn -->
+
+
+<!-- MODAL CREDIT -->
+<div class="mo" id="mo-credit">
+  <div class="mo-box">
+    <div class="mo-title">🏦 Ajouter / Modifier un Crédit <span class="mo-close" onclick="closeModal('mo-credit')">✕</span></div>
+    <div class="fg2" style="gap:10px;margin-bottom:10px">
+      <div class="fg"><label>Bien concerné</label>
+        <select id="cr-bien" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;">
+          <option value="">— Sélectionner —</option>
+        </select>
+      </div>
+      <div class="fg"><label>Banque</label><input type="text" id="cr-banque" placeholder="Ex: BNP, Crédit Agricole…" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Mensualité (€)</label><input type="number" id="cr-mens" placeholder="0" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Capital Restant Dû (€)</label><input type="number" id="cr-cap" placeholder="0" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Date de Fin</label><input type="date" id="cr-fin" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Notes</label><input type="text" id="cr-note" placeholder="Remarques…" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd)">
+      <button class="btn btn-s" onclick="closeModal('mo-credit')">Annuler</button>
+      <button class="btn btn-p" onclick="saveCredit()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL BAILLEUR -->
+<div class="mo" id="mo-bailleur">
+  <div class="mo-box">
+    <div class="mo-title">🏠 Informations Bailleur <span class="mo-close" onclick="closeModal('mo-bailleur')">✕</span></div>
+    <div class="fg2" style="gap:10px;margin-bottom:10px">
+      <div class="fg"><label>Nom complet</label><input type="text" id="b-nom" placeholder="Ex: Bismuth Jacques" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Adresse</label><input type="text" id="b-adr" placeholder="N° Rue, Ville" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Code postal</label><input type="text" id="b-cp" placeholder="75000" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Ville</label><input type="text" id="b-ville" placeholder="Paris" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Email bailleur</label><input type="email" id="b-email" placeholder="contact@email.com" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+      <div class="fg"><label>Téléphone</label><input type="text" id="b-tel" placeholder="06 XX XX XX XX" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd)">
+      <button class="btn btn-s" onclick="closeModal('mo-bailleur')">Annuler</button>
+      <button class="btn btn-p" onclick="saveBailleur()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL BAILLEUR -->
+<div class="mo" id="mo-bailleur">
+  <div class="mo-box" style="max-width:440px;">
+    <div class="mo-title">✏️ Modifier les coordonnées <span class="mo-close" onclick="closeModal('mo-bailleur')">✕</span></div>
+    <div id="mb-info" style="background:var(--bl5);border:1px solid var(--brd);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--mu);"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+      <div class="fg"><label>Email</label>
+        <input type="email" id="mb-email" placeholder="contact@email.com" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+      </div>
+      <div class="fg"><label>Téléphone</label>
+        <input type="text" id="mb-tel" placeholder="06 XX XX XX XX" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd);">
+      <button class="btn btn-s" onclick="closeModal('mo-bailleur')">Annuler</button>
+      <button class="btn btn-p" onclick="saveBailleurContact()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BIEN -->
+<div class="mo" id="mo-bien">
+  <div class="mo-box">
+    <div class="mo-title">🏠 Ajouter un Bien <span class="mo-close" onclick="closeModal('mo-bien')">✕</span></div>
+    <div class="fg2" style="gap:10px;margin-bottom:10px">
+      <div class="fg"><label>Nom / Référence</label><input id="nb-n" type="text" placeholder="Ex: Andrée Theuriet"></div>
+      <div class="fg"><label>Adresse / Ville</label><input id="nb-a" type="text" placeholder="Ville"></div>
+      <div class="fg"><label>Entité propriétaire</label>
+        <select id="nb-e">
+          <option>Bismuth Jacques</option><option>SCI VB Immo</option><option>SCI SJ Immo Gagny</option>
+          <option>Sophie Bismuth</option><option>SCI SJ 5Q Pasteur</option><option>SCI JML Immo</option>
+          <option>SCI BOBI Immo</option><option>PSB Pasteur</option><option>Locaux Commerciaux</option>
+        </select>
+      </div>
+      <div class="fg"><label>Type</label>
+        <select id="nb-t"><option>Studio</option><option>Appartement F2</option><option>Appartement F3</option><option>Local commercial</option></select>
+      </div>
+      <div class="fg"><label>Locataire</label><input id="nb-l" type="text" placeholder="Nom du locataire"></div>
+      <div class="fg"><label>Loyer mensuel (€)</label><input id="nb-loy" type="number" placeholder="0"></div>
+      <div class="fg"><label>Crédit mensuel (€)</label><input id="nb-crd" type="number" placeholder="0"></div>
+      <div class="fg"><label>Charges mensuelles (€)</label><input id="nb-chg" type="number" placeholder="0"></div>
+    </div>
+    <div class="fa"><button class="btn btn-s" onclick="closeModal('mo-bien')">Annuler</button><button class="btn btn-p" onclick="addBien()">Ajouter</button></div>
+  </div>
+</div>
+
+<div id="toast">✅ Enregistré</div>
+
+<script>
+// ══════════════════════════════════
+//  DONNÉES
+// ══════════════════════════════════
+const MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+// Loyers prévus par mois (vérifiés fichier)
+const PREV=[38178,38178,38878,38187,43928,43928,43928,43928,43078,43928,43928,43928];
+// Crédits par mois
+const CRED=[22486,22486,22486,22486,26601,26601,26601,26601,26601,26601,26601,26601];
+// CF prévisionnel
+const CF=PREV.map((l,i)=>l-CRED[i]-[3435,3435,3435,3543,3543,3543,3535,3535,3535,3535,3535,3535][i]);
+
+const CAT_ICO={syndic:'🏢',eau:'💧',elec:'⚡',assurance:'🛡️',tf:'🏛️',travaux:'🔧',entretien:'🧹',gestion:'📋',credit:'🏦',divers:'📎'};
+const CAT_COL={syndic:'#1a5cad',eau:'#0891b2',elec:'#d97706',assurance:'#6d28d9',tf:'#9a6f00',travaux:'#c0392b',entretien:'#0f7a45',gestion:'#374151',credit:'#003F87',divers:'#6272a0'};
+
+let BIENS=[
+  {id:1, n:"Andrée Theuriet",      a:"Aulnay-sous-Bois",  e:"Bismuth Jacques",    l:"Andrée Theuriet",  loy:800,  crd:0,    chg:100},
+  {id:2, n:"Joseph Bara",           a:"Romainville",       e:"Bismuth Jacques",    l:"Joseph Bara",      loy:800,  crd:494,  chg:100},
+  {id:3, n:"Varagnat Dimitri",      a:"Bondy",             e:"Bismuth Jacques",    l:"Dimitri",          loy:1400, crd:853,  chg:202},
+  {id:4, n:"Varagnat RDC",          a:"Bondy",             e:"SCI SJ Immo",        l:"Locataire RDC",    loy:1300, crd:1017, chg:314},
+  {id:5, n:"Varagnat 1er Étage",    a:"Bondy",             e:"SCI SJ Immo",        l:"Ion Garviliuc",    loy:1400, crd:1017, chg:314},
+  {id:6, n:"Hasnat Jean Lolive",    a:"Pantin",            e:"SCI SJ Immo",        l:"Hasnat",           loy:1208, crd:779,  chg:100},
+  {id:7, n:"Claudia",               a:"Drancy",            e:"SCI VB Immo",        l:"Claudia",          loy:900,  crd:0,    chg:0},
+  {id:8, n:"Ovidiu Studio",         a:"Drancy", e:"SCI VB Immo",        l:"Ovidiu",           loy:1300, crd:0,    chg:0},
+  {id:9, n:"Wellington Studio",     a:"Drancy", e:"SCI VB Immo",        l:"Wellington",       loy:600,  crd:1594, chg:0},
+  {id:10,n:"Luna 8901",             a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Luna",             loy:900,  crd:0,    chg:32},
+  {id:11,n:"Snijana 8902",          a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Snijana",          loy:700,  crd:0,    chg:32},
+  {id:12,n:"Valeria 8903",          a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Valeria",          loy:800,  crd:0,    chg:32},
+  {id:13,n:"Adriana 8904",          a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Adriana",          loy:750,  crd:0,    chg:32},
+  {id:14,n:"Romain 8905",           a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Romain",           loy:1000, crd:1817, chg:32},
+  {id:45,n:"8906",                  a:"Chemin de Fer, Bondy",  e:"SCI SJ Immo",  l:"Vacant",           loy:850,  crd:0,    chg:32},
+  {id:15,n:"John Karsenty",         a:"Villemomble",       e:"Sophie Bismuth",     l:"John Karsenty",    loy:850,  crd:472,  chg:135},
+  {id:16,n:"Ioan 5Q01",             a:"Pasteur Gagny",     e:"SCI SJ Immo",  l:"Ioan",             loy:1000, crd:0,    chg:62},
+  {id:17,n:"Cristina 5Q03",         a:"Pasteur Gagny",     e:"SCI SJ Immo",  l:"Cristina",         loy:950,  crd:0,    chg:62},
+  {id:18,n:"Viorel 5Q04",           a:"Pasteur Gagny",     e:"SCI SJ Immo",  l:"Viorel",           loy:950,  crd:0,    chg:62},
+  {id:19,n:"Ion 5Q05",              a:"Pasteur Gagny",     e:"SCI SJ Immo",  l:"Ion",              loy:950,  crd:0,    chg:62},
+  {id:20,n:"Marcel 5Q06",           a:"Pasteur Gagny",     e:"SCI SJ Immo",  l:"Marcel",           loy:950,  crd:2195, chg:62},
+  {id:21,n:"Vlad 801",              a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Vlad",             loy:850,  crd:0,    chg:42},
+  {id:22,n:"Cassia 806",            a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Cassia",           loy:1400, crd:0,    chg:42},
+  {id:23,n:"Marin 805",             a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Marin",            loy:1000, crd:0,    chg:42},
+  {id:24,n:"Vasile 804",            a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Vasile",           loy:750,  crd:0,    chg:42},
+  {id:25,n:"Flavie 803",            a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Flavie",           loy:850,  crd:0,    chg:42},
+  {id:26,n:"Lulian 802",            a:"Aulnay - Ville Neuve",  e:"SCI JML Immo",       l:"Lulian",           loy:600,  crd:3300, chg:42},
+  {id:27,n:"Wesley 101",            a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Wesley",      loy:850,  crd:0,    chg:75},
+  {id:28,n:"Isabela 102",           a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Isabela",     loy:580,  crd:0,    chg:75},
+  {id:29,n:"Vladimir 103",          a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Vladimir",    loy:550,  crd:0,    chg:75},
+  {id:30,n:"Biane 104",             a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Biane",       loy:750,  crd:0,    chg:75},
+  {id:31,n:"Dianefer 106",            a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Dianefer",      loy:700,  crd:0,    chg:75},
+  {id:32,n:"Igor 107",              a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Igor",        loy:700,  crd:0,    chg:75},
+  {id:33,n:"Dianefer 108",          a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Dianefer",    loy:850,  crd:0,    chg:75},
+  {id:34,n:"Victor Hugo 109",       a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Victor Hugo", loy:800,  crd:0,    chg:75},
+  {id:35,n:"Luciena 110",           a:"100 av. des Fauvettes, Montfermeil", e:"SCI BOBI Immo",  l:"Luciena",     loy:900,  crd:2447, chg:75},
+  {id:41,n:"Les Pavillons S/Bois",  a:"Av. Albert Thomas, Les Pavillons",   e:"SCI BOBI Immo",  l:"Erwan",       loy:1500, crd:1806, chg:0},
+  {id:42,n:"Marcos F2",             a:"Av. Albert Thomas, Les Pavillons",   e:"SCI BOBI Immo",  l:"Marcos",      loy:800,  crd:0,    chg:0},
+  {id:43,n:"Le Raincy / Manzyl",    a:"Le Raincy",                          e:"SCI BOBI Immo",  l:"Manzyl",      loy:2200, crd:2024, chg:200},
+  {id:36,n:"Leonardo PSB 1er",      a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Leonardo",    loy:800,  crd:0,    chg:100},
+  {id:37,n:"Bureau PSB",            a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Jomale",      loy:1500, crd:0,    chg:100},
+  {id:38,n:"141A Andreea",          a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Andreea",     loy:800,  crd:0,    chg:100},
+  {id:39,n:"141B Daniela",          a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Daniela",     loy:850,  crd:0,    chg:100},
+  {id:40,n:"Josi 2e Étage",         a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Josi",        loy:800,  crd:2670, chg:100},
+  {id:44,n:"Rue des Pyrénées",      a:"Rue des Pyrénées",                   e:"SCI JML Immo",   l:"Sub Gambetta",loy:4500, crd:4115, chg:0},
+];
+
+// Storage — toutes les données indexées par mois (0–11)
+let LD=JSON.parse(localStorage.getItem('immo3_l')||'{}');  // loyers: {mois:{bienId:{enc,date,mode,st,note}}}
+let DD=JSON.parse(localStorage.getItem('immo3_d')||'{}');  // dépenses: {mois:[{...}]}
+let H=JSON.parse(localStorage.getItem('immo3_h')||'[]');   // historique
+
+let CUR=new Date().getMonth(); // mois courant
+
+// ══════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════
+const PAGE_TITLES={annuel:'📊 Vue Annuelle 2025',loyers:'🏠 Loyers du Mois',depenses:'💸 Dépenses du Mois',resultat:'📈 Résultat du Mois',historique:'📁 Historique',biens:'🏘️ Mes Biens'};
+
+function goPage(p,el){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.sb-a').forEach(x=>x.classList.remove('on'));
+  document.getElementById('pg-'+p).classList.add('on');
+  if(el) el.classList.add('on');
+  set('pg-title',PAGE_TITLES[p]||p);
+  if(p==='loyers') buildLoyersPage();
+  if(p==='depenses') buildDepPage();
+  if(p==='resultat') buildResultatPage();
+  if(p==='historique') renderHisto();
+  if(p==='biens') buildBiensTable();
+  if(p==='annuel') buildAnnuelPage();
+  if(p==='credits') buildCreditsPage();
+  if(p==='quittances') buildQuittancesPage();
+}
+
+function navMois(d){
+  CUR=Math.max(0,Math.min(11,CUR+d));
+  buildMoisBtns();
+  refreshCurrentPage();
+  updateSidebar();
+}
+
+function setMois(m){
+  CUR=m;
+  buildMoisBtns();
+  refreshCurrentPage();
+  updateSidebar();
+}
+
+function refreshCurrentPage(){
+  const on=document.querySelector('.pg.on');
+  if(on) goPage(on.id.replace('pg-',''),document.querySelector('.sb-a.on'));
+}
+
+function buildMoisBtns(){
+  const c=document.getElementById('mois-btns');
+  c.innerHTML=MS.map((m,i)=>{
+    const ldata=LD[i]||{};
+    const ddata=DD[i]||[];
+    const hasSome=Object.keys(ldata).length>0||ddata.length>0;
+    const allEnc=hasSome&&BIENS.every(b=>ldata[b.id]&&ldata[b.id].st==='enc');
+    const dotCls=allEnc?'gr':hasSome?'or':'';
+    return `<button class="m-btn ${i===CUR?'on':''}" onclick="setMois(${i})">${m}${dotCls?`<span class="m-dot ${dotCls}"></span>`:''}</button>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+//  VUE ANNUELLE
+// ══════════════════════════════════
+function buildAnnuelPage(){
+  // Cards mois
+  const grid=document.getElementById('ann-grid');
+  grid.innerHTML=MS.map((m,i)=>{
+    const ldata=LD[i]||{};
+    let enc=0;BIENS.forEach(b=>{if(ldata[b.id])enc+=ldata[b.id].enc;});
+    const ddeps=(DD[i]||[]).reduce((s,d)=>s+d.mont,0);
+    const net=enc-CRED[i]-ddeps;
+    const pct=PREV[i]>0?Math.round(enc/PREV[i]*100):0;
+    const hasDat=enc>0||ddeps>0;
+    return `<div class="ann-card ${i===CUR?'on':''}" onclick="setMois(${i});goPage('resultat',document.querySelector('[data-page=resultat]'))">
+      <div class="astatus" style="background:${pct>=100?'#4ade80':pct>0?'#fb923c':'#d1d5db'}"></div>
+      <div class="am">${MN[i]}</div>
+      ${hasDat?`
+      <div class="ae" style="color:${enc>=PREV[i]?'var(--gr)':'var(--or)'}">${fmt(enc)}</div>
+      <div class="ad" style="color:var(--mu)">sur ${fmt(PREV[i])}</div>
+      <div class="acf" style="color:${net>0?'var(--gr)':'var(--rd)'}">${net>0?'+':''}${fmt(net)}</div>
+      <div class="abar"><div class="abar-f" style="width:${Math.min(100,pct)}%;background:${pct>=100?'var(--gr)':'var(--or)'}"></div></div>
+      `:`<div class="ad" style="color:var(--mu);margin-top:4px">Attendu: ${fmt(PREV[i])}</div><div style="font-size:11px;color:var(--mu);margin-top:8px;font-family:'JetBrains Mono',monospace">Aucune saisie</div>`}
+    </div>`;
+  }).join('');
+
+  // Chart 1
+  if(window._cA1)window._cA1.destroy();
+  window._cA1=new Chart(document.getElementById('cA1'),{type:'bar',data:{labels:MS,datasets:[
+    {label:'Loyers Prévus',data:PREV,backgroundColor:'rgba(0,63,135,0.2)',borderColor:'#003F87',borderWidth:1.5,borderRadius:3,order:2},
+    {label:'Crédits',data:CRED,backgroundColor:'rgba(192,57,43,0.18)',borderColor:'#c0392b',borderWidth:1.5,borderRadius:3,order:2},
+    {label:'CF Net Prévu',data:CF,type:'line',borderColor:'#0f7a45',backgroundColor:'rgba(15,122,69,0.05)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#0f7a45',tension:.35,fill:false,order:1},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:9,padding:10,font:{size:10}}}},scales:{x:{grid:{color:'#e8eef7'},ticks:{font:{size:9}}},y:{grid:{color:'#e8eef7'},ticks:{callback:v=>(v/1000).toFixed(0)+'k',font:{size:10}}}}}});
+
+  // Chart 2 — encaissements réels
+  const encReels=MS.map((_,i)=>{let e=0;BIENS.forEach(b=>{if((LD[i]||{})[b.id])(e+=(LD[i][b.id].enc||0));});return e;});
+  if(window._cA2)window._cA2.destroy();
+  window._cA2=new Chart(document.getElementById('cA2'),{type:'bar',data:{labels:MS,datasets:[
+    {label:'Prévu',data:PREV,backgroundColor:'rgba(0,63,135,0.15)',borderColor:'#003F87',borderWidth:1,borderRadius:3},
+    {label:'Réel',data:encReels,backgroundColor:'rgba(15,122,69,0.4)',borderColor:'#0f7a45',borderWidth:1.5,borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:9,padding:10,font:{size:10}}}},scales:{x:{grid:{color:'#e8eef7'},ticks:{font:{size:9}}},y:{grid:{color:'#e8eef7'},ticks:{callback:v=>(v/1000).toFixed(0)+'k',font:{size:10}}}}}});
+
+  // Chart 3 — dépenses réelles
+  const depReels=MS.map((_,i)=>(DD[i]||[]).reduce((s,d)=>s+d.mont,0));
+  if(window._cA3)window._cA3.destroy();
+  window._cA3=new Chart(document.getElementById('cA3'),{type:'bar',data:{labels:MS,datasets:[{label:'Dépenses',data:depReels,backgroundColor:'rgba(192,57,43,0.5)',borderColor:'#c0392b',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#e8eef7'},ticks:{font:{size:9}}},y:{grid:{color:'#e8eef7'},ticks:{callback:v=>(v/1000).toFixed(0)+'k',font:{size:10}}}}}});
+
+  // Chart 4 — résultat net réel
+  const netReels=MS.map((_,i)=>{let e=0;BIENS.forEach(b=>{if((LD[i]||{})[b.id])e+=(LD[i][b.id].enc||0);});const d=(DD[i]||[]).reduce((s,x)=>s+x.mont,0);return e-CRED[i]-d;});
+  if(window._cA4)window._cA4.destroy();
+  window._cA4=new Chart(document.getElementById('cA4'),{type:'bar',data:{labels:MS,datasets:[{label:'Résultat Net',data:netReels,backgroundColor:netReels.map(v=>v>0?'rgba(15,122,69,0.55)':'rgba(192,57,43,0.55)'),borderColor:netReels.map(v=>v>0?'#0f7a45':'#c0392b'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>(ctx.raw>0?'+':'')+fmt(ctx.raw)}}},scales:{x:{grid:{color:'#e8eef7'},ticks:{font:{size:9}}},y:{grid:{color:'#e8eef7'},ticks:{callback:v=>(v/1000).toFixed(0)+'k',font:{size:10}}}}}});
+}
+
+// ══════════════════════════════════
+//  LOYERS DU MOIS
+// ══════════════════════════════════
+function buildLoyersPage(){
+  set('loy-mois-label',MN[CUR]);set('loy-mois-sub',MN[CUR]+' 2025');
+  set('loy-attendu',fmt(PREV[CUR]));
+
+  const grid=document.getElementById('lc-grid');
+  grid.innerHTML='';
+  const mdata=LD[CUR]||{};
+
+  // Définition des entités avec leurs immeubles
+  const ENTITES=[
+    {nom:'Bismuth Jacques', color:'#003F87', icon:'👤', immeubles:[
+      {adresse:'Aulnay-sous-Bois',             ids:[1]},
+      {adresse:'Romainville',                  ids:[2]},
+      {adresse:'Bondy — H. Varagnat',          ids:[3]},
+    ]},
+    {nom:'SCI SJ Immo', color:'#005f9e', icon:'🏢', immeubles:[
+      {adresse:'Bondy — H. Varagnat',          ids:[4,5]},
+      {adresse:'Pantin',                       ids:[6]},
+      {adresse:'Chemin de Fer — Bondy',         ids:[10,11,12,13,14,45]},
+      {adresse:'Pasteur Gagny',                ids:[16,17,18,19,20]},
+      {adresse:'PSB Pasteur',                  ids:[36,37,38,39,40]},
+    ]},
+    {nom:'SCI VB Immo', color:'#1a5cad', icon:'🏢', immeubles:[
+      {adresse:'Drancy',          ids:[7,8,9]},
+    ]},
+    {nom:'Sophie Bismuth', color:'#6d28d9', icon:'👤', immeubles:[
+      {adresse:'Villemomble',                  ids:[15]},
+    ]},
+    {nom:'SCI JML Immo', color:'#b8860b', icon:'🏢', immeubles:[
+      {adresse:'Aulnay - Ville Neuve',          ids:[21,22,23,24,25,26]},
+      {adresse:'Rue des Pyrénées',             ids:[44]},
+    ]},
+    {nom:'SCI BOBI Immo', color:'#c0392b', icon:'🏢', immeubles:[
+      {adresse:'100 av. des Fauvettes — Montfermeil', ids:[27,28,29,30,31,32,33,34,35]},
+      {adresse:'Av. Albert Thomas — Les Pavillons',   ids:[41,42]},
+      {adresse:'Le Raincy',                           ids:[43]},
+    ]},
+  ];
+
+  ENTITES.forEach(ent=>{
+    const biensEnt=BIENS.filter(b=>b.e===ent.nom);
+    if(!biensEnt.length) return;
+
+    // Calcul stats entité
+    let loyTotal=0,encTotal=0;
+    biensEnt.forEach(b=>{
+      loyTotal+=b.loy;
+      const s=mdata[b.id]||{};
+      if(s.enc!==undefined) encTotal+=s.enc;
+    });
+
+    // Header entité
+    const header=document.createElement('div');
+    header.style.cssText=`grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:${ent.color};color:#fff;border-radius:10px;padding:12px 18px;margin-top:16px;`;
+    header.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px">${ent.icon}</span>
+        <div>
+          <div style="font-weight:800;font-size:15px;">${ent.nom}</div>
+          <div style="font-size:10px;opacity:.65;font-family:monospace;">${biensEnt.length} bien${biensEnt.length>1?'s':''} · Attendu : ${fmt(loyTotal)}</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;">Encaissé</div>
+        <div style="font-size:20px;font-weight:800;color:${encTotal>0?'#6ee3a5':'rgba(255,255,255,.35)'}">${encTotal>0?fmt(encTotal):'—'}</div>
+      </div>`;
+    grid.appendChild(header);
+
+    // Immeubles de cette entité
+    ent.immeubles.forEach(imm=>{
+      const biensImm=BIENS.filter(b=>imm.ids.includes(b.id));
+      if(!biensImm.length) return;
+
+      let immLoy=0,immEnc=0;
+      biensImm.forEach(b=>{
+        immLoy+=b.loy;
+        const s=mdata[b.id]||{};
+        if(s.enc!==undefined) immEnc+=s.enc;
+      });
+
+      // Sous-header immeuble
+      const subHeader=document.createElement('div');
+      subHeader.style.cssText=`grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:${ent.color}18;border:1.5px solid ${ent.color}44;border-radius:8px;padding:9px 14px;margin-top:8px;`;
+      subHeader.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px">🏠</span>
+          <div>
+            <div style="font-weight:700;font-size:12px;color:${ent.color}">${imm.adresse}</div>
+            <div style="font-size:10px;color:var(--mu);font-family:monospace;">${biensImm.length} logement${biensImm.length>1?'s':''} · Attendu : ${fmt(immLoy)}</div>
+          </div>
+        </div>
+        <div style="font-family:monospace;font-size:12px;font-weight:700;color:${immEnc>0?(immEnc>=immLoy?'var(--gr)':'var(--or)'):'var(--mu)'}">
+          ${immEnc>0?fmt(immEnc):'Non saisi'}
+        </div>`;
+      grid.appendChild(subHeader);
+
+      // Cards biens de cet immeuble
+      biensImm.forEach(b=>{
+        const s=mdata[b.id]||{};
+        const enc=s.enc!==undefined?s.enc:b.loy;
+        const st=s.st||'att';
+        const net=b.loy-b.crd-b.chg;
+
+        const div=document.createElement('div');
+        div.className='lc';
+        div.id='lc-'+b.id;
+        div.style.borderTop=`3px solid ${ent.color}`;
+        div.innerHTML=`
+          <div class="lc-h">
+            <div>
+              <div class="ln">${b.n}</div>
+              <div class="la" style="color:${ent.color};font-weight:600">${b.l||'Vacant'}</div>
+            </div>
+            ${net<0?`<span class="bd br" style="font-size:9px">CF−</span>`:''}
+          </div>
+          <div class="lc-b">
+            <div>
+              <div class="lc-loy">${b.loy.toLocaleString('fr-FR')} €</div>
+              <div class="lc-loy-sub">${b.l||'Vacant'}</div>
+            </div>
+            <div class="lc-fields">
+              <input class="lc-inp" id="e-${b.id}" type="number" value="${enc}" placeholder="Montant réel" onchange="onEChange(${b.id},${b.loy})">
+              <input class="lc-inp" id="dt-${b.id}" type="date" value="${s.date||''}">
+              <select id="mo-${b.id}" style="border:1px solid var(--brd);border-radius:6px;padding:5px 7px;font-size:11px;background:var(--bg);font-family:'Sora',sans-serif;color:var(--tx);outline:none;">
+                ${['Virement','Chèque','Espèces','Prélèvement'].map(m=>`<option ${s.mode===m?'selected':''}>${m}</option>`).join('')}
+              </select>
+              <input class="lc-inp" id="nt-${b.id}" type="text" value="${s.note||''}" placeholder="Note…">
+            </div>
+          </div>
+          <div class="lc-f">
+            <div class="st-btns">
+              <button class="sb2 ${st==='enc'?'s-enc':''}" onclick="setSt(${b.id},'enc')">✅ Encaissé</button>
+              <button class="sb2 ${st==='par'?'s-par':''}" onclick="setSt(${b.id},'par')">⚡ Partiel</button>
+              <button class="sb2 ${st==='ret'?'s-ret':''}" onclick="setSt(${b.id},'ret')">🕐 Retard</button>
+              <button class="sb2 ${st==='imp'?'s-imp':''}" onclick="setSt(${b.id},'imp')">❌ Impayé</button>
+              <button class="sb2 ${st==='vac'?'s-vac':''}" onclick="setSt(${b.id},'vac')">🚫 Non occupé</button>
+            </div>
+            <div class="ecart-lbl" id="ec-${b.id}"></div>
+          </div>`;
+        grid.appendChild(div);
+        onEChange(b.id,b.loy);
+      });
+    });
+  });
+  updateLoyerStats();
+}
+
+function onEChange(id,prev){
+  const inp=document.getElementById('e-'+id);if(!inp)return;
+  const v=parseFloat(inp.value)||0;
+  inp.className='lc-inp'+(v<prev?' err':v>prev?' ok':'');
+  const ecart=v-prev;
+  const el=document.getElementById('ec-'+id);
+  if(el){el.textContent=ecart===0?'= Conforme':(ecart>0?'+':'')+Math.round(ecart).toLocaleString('fr-FR')+' €';el.style.color=ecart<0?'var(--rd)':ecart>0?'var(--gr)':'var(--mu)';}
+  updateLoyerStats();
+}
+
+function setSt(id,st){
+  const card=document.getElementById('lc-'+id);if(!card)return;
+  card.querySelectorAll('.sb2').forEach(b=>{b.className='sb2';if(b.getAttribute('onclick').includes("'"+st+"'")){b.classList.add('s-'+st);}});
+  // Auto date
+  const dtInp=document.getElementById('dt-'+id);
+  if(dtInp&&!dtInp.value&&(st==='enc'||st==='par'))dtInp.value=new Date().toISOString().split('T')[0];
+  updateLoyerStats();
+}
+
+function getCardSt(id){
+  const card=document.getElementById('lc-'+id);if(!card)return'att';
+  for(const s of['enc','par','ret','imp','vac']){if(card.querySelector('.s-'+s))return s;}
+  return'att';
+}
+
+function updateLoyerStats(){
+  let enc=0,man=0,imp=0,encNb=0,attNb=0,impNb=0;
+  BIENS.forEach(b=>{
+    const v=parseFloat(document.getElementById('e-'+b.id)?.value)||b.loy;
+    const st=getCardSt(b.id);
+    if(st==='enc'){enc+=v;encNb++;}
+    else if(st==='par'){enc+=v;man+=b.loy-v;attNb++;}
+    else if(st==='ret'){man+=b.loy;attNb++;}
+    else if(st==='imp'){imp+=b.loy;impNb++;}
+    else if(st==='vac'){/* non occupé : exclu des calculs */}
+    else{man+=b.loy;attNb++;}
+  });
+  set('loy-enc',fmt(enc));set('loy-man',fmt(man));set('loy-imp',fmt(imp));
+  const pct=PREV[CUR]>0?Math.round(enc/PREV[CUR]*100):0;
+  set('loy-pct',pct+'%');
+  const f=document.getElementById('loy-prog-fill');if(f)f.style.width=pct+'%';
+  set('loy-prog-txt',pct+'%');
+}
+
+function cocheTout(){
+  BIENS.forEach(b=>{
+    setSt(b.id,'enc');
+    const encInp=document.getElementById('e-'+b.id);
+    if(encInp&&(!parseFloat(encInp.value)))encInp.value=b.loy;
+    onEChange(b.id,b.loy);
+  });
+}
+
+function saveLoyers(){
+  if(!LD[CUR])LD[CUR]={};
+  BIENS.forEach(b=>{
+    const enc=parseFloat(document.getElementById('e-'+b.id)?.value)||0;
+    const date=document.getElementById('dt-'+b.id)?.value||'';
+    const mode=document.getElementById('mo-'+b.id)?.value||'Virement';
+    const note=document.getElementById('nt-'+b.id)?.value||'';
+    const st=getCardSt(b.id);
+    LD[CUR][b.id]={enc,date,mode,st,note};
+    // Histo
+    const ei=H.findIndex(h=>h.tp==='l'&&h.bid===b.id&&h.m===CUR);
+    const entry={tp:'l',bid:b.id,nom:b.n,ent:b.e,loc:b.l,m:CUR,prev:b.loy,enc,date,mode,st,note};
+    if(ei>=0)H[ei]=entry;else H.push(entry);
+  });
+  ls('immo3_l',LD);ls('immo3_h',H);
+  updateSidebar();buildMoisBtns();
+  if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
+  toast('Loyers enregistres'); BIENS.forEach(function(b){if(LD[CUR]&&LD[CUR][b.id])dbSaveLoyer(CUR,b.id,LD[CUR][b.id]);});
+}
+
+// ══════════════════════════════════
+//  DÉPENSES
+// ══════════════════════════════════
+function buildDepPage(){
+  set('dep-mois-label',MN[CUR]);
+  set('dep-list-mois',MN[CUR]+' 2025');
+  set('dep-form-mois',MN[CUR]+' 2025');
+  refreshDepStats();
+  renderDepList();
+}
+
+function refreshDepStats(){
+  const deps=DD[CUR]||[];
+  let tot=0,ch=0,tf=0,eau=0,tra=0;
+  deps.forEach(d=>{
+    tot+=d.mont;
+    if(['syndic','gestion'].includes(d.cat))ch+=d.mont;
+    if(d.cat==='tf')tf+=d.mont;
+    if(['eau','elec'].includes(d.cat))eau+=d.mont;
+    if(['travaux','entretien','divers'].includes(d.cat))tra+=d.mont;
+  });
+  set('dep-total-v',fmt(tot));set('dep-ch-v',fmt(ch));
+  set('dep-tf-v',fmt(tf));set('dep-eau-v',fmt(eau));set('dep-tra-v',fmt(tra));
+}
+
+function addDep(){
+  const mont=parseFloat(document.getElementById('d-mont').value)||0;
+  if(mont<=0){toast('⚠️ Montant requis');return;}
+  const dep={
+    cat:document.getElementById('d-cat').value,
+    bien:document.getElementById('d-bien').options[document.getElementById('d-bien').selectedIndex].text,
+    lib:document.getElementById('d-lib').value||'—',
+    mont,date:document.getElementById('d-date').value,
+    perio:document.getElementById('d-perio').value,
+    ref:document.getElementById('d-ref').value,
+    note:document.getElementById('d-note').value,
+  };
+  if(!DD[CUR])DD[CUR]=[];
+  DD[CUR].push(dep);
+  ls('immo3_d',DD);
+  H.push({tp:'d',m:CUR,...dep});ls('immo3_h',H);
+  resetDep();buildDepPage();updateSidebar();
+  if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
+  toast('✅ Dépense ajoutée : '+dep.lib);
+}
+
+function resetDep(){['d-lib','d-mont','d-ref','d-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+
+function renderDepList(){
+  const cat=document.getElementById('dep-filter')?.value||'';
+  const deps=(DD[CUR]||[]).filter(d=>!cat||d.cat===cat);
+  const c=document.getElementById('dep-list-container');
+  if(!deps.length){c.innerHTML=`<div style="text-align:center;padding:28px;color:var(--mu);font-size:13px;background:var(--surf);border:1px solid var(--brd);border-radius:10px">Aucune dépense pour ${MN[CUR]}.</div>`;return;}
+  c.innerHTML=deps.map((d,i)=>`
+    <div class="dep-row">
+      <div class="dep-ico" style="background:${CAT_COL[d.cat]||'#555'}22;color:${CAT_COL[d.cat]||'#555'}">${CAT_ICO[d.cat]||'📎'}</div>
+      <div class="dep-inf">
+        <div class="dn">${d.lib}</div>
+        <div class="da">${d.bien} · ${d.perio}${d.date?' · '+d.date:''}</div>
+      </div>
+      <span class="bd" style="background:${CAT_COL[d.cat]||'#555'}22;color:${CAT_COL[d.cat]||'#555'};font-size:9.5px">${d.cat}</span>
+      <div class="dep-m">${fmt(d.mont)}</div>
+      <button class="btn btn-r btn-sm" onclick="delDep(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function delDep(i){
+  const cat=document.getElementById('dep-filter')?.value||'';
+  const allDeps=DD[CUR]||[];
+  const filtered=allDeps.filter(d=>!cat||d.cat===cat);
+  const target=filtered[i];
+  const realIdx=allDeps.indexOf(target);
+  if(realIdx>=0)allDeps.splice(realIdx,1);
+  DD[CUR]=allDeps;ls('immo3_d',DD);
+  buildDepPage();updateSidebar();toast('🗑 Dépense supprimée');
+}
+
+function updateTF(cb){
+  const badge=cb.closest('tr')?.querySelector('.bd');
+  if(badge){badge.className='bd '+(cb.checked?'bg':'bk');badge.textContent=cb.checked?'✅ Payé':'En attente';}
+}
+
+function saveTF(){
+  const checks=document.querySelectorAll('.tfc:checked');
+  let added=0;
+  checks.forEach(cb=>{
+    const mont=parseInt(cb.dataset.m)||0;
+    const lib=cb.dataset.lib||'Taxe Foncière';
+    const date=cb.closest('tr')?.querySelector('.tf-date')?.value||'';
+    if(!DD[CUR])DD[CUR]=[];
+    if(!DD[CUR].find(d=>d.lib===lib&&d.cat==='tf')){
+      DD[CUR].push({cat:'tf',bien:'Global',lib,mont,date,perio:'Annuel',ref:'',note:''});
+      H.push({tp:'d',m:CUR,cat:'tf',bien:'Global',lib,mont,date,perio:'Annuel',ref:'',note:''});
+      added++;
+    }
+  });
+  ls('immo3_d',DD);ls('immo3_h',H);
+  buildDepPage();updateSidebar();
+  toast(`✅ ${added} taxe(s) foncière(s) enregistrée(s) en dépense`);
+}
+
+// ══════════════════════════════════
+//  RÉSULTAT
+// ══════════════════════════════════
+// ─── Onglets résultat ───────────────────────────────────────────────
+function switchResTab(view, el){
+  document.querySelectorAll('.res-tab').forEach(t=>{
+    t.style.color='var(--mu)';t.style.fontWeight='500';t.style.borderBottomColor='transparent';
+  });
+  el.style.color='var(--bl)';el.style.fontWeight='700';el.style.borderBottomColor='var(--bl)';
+  ['entite','bien','depenses','graphiques'].forEach(v=>{
+    const d=document.getElementById('res-view-'+v);
+    if(d) d.style.display=v===view?'block':'none';
+  });
+  if(view==='graphiques') buildResCharts();
+}
+
+function buildResultatPage(){
+  const mdata=LD[CUR]||{};
+  const deps=DD[CUR]||[];
+
+  // ── Calcul global ──
+  let encGlobal=0;
+  BIENS.forEach(b=>{
+    const s=mdata[b.id]||{};
+    if(s.st!=='vac' && s.enc!==undefined) encGlobal+=s.enc;
+  });
+  const depTot=deps.reduce((s,d)=>s+d.mont,0);
+  const net=encGlobal-CRED[CUR]-depTot;
+  const vs=net-CF[CUR];
+
+  set('res-mois-lbl',MN[CUR]);
+  set('res-enc',fmt(encGlobal));
+  set('res-crd',fmt(CRED[CUR]));
+  set('res-dep',fmt(depTot));
+  const nel=document.getElementById('res-net');
+  if(nel){nel.textContent=(net>0?'+':'')+fmt(net);nel.className='mb-v '+(net>0?'g':'r');}
+  const vel=document.getElementById('res-vs');
+  if(vel){vel.textContent=(vs>0?'+':'')+fmt(vs);vel.className='mb-v '+(vs>=0?'g':'r');}
+
+  // ── VUE PAR ENTITÉ ──────────────────────────────────────────────────
+  const ENT_DEF=[
+    {nom:'Bismuth Jacques', color:'#003F87'},
+    {nom:'SCI SJ Immo',     color:'#005f9e'},
+    {nom:'SCI VB Immo',     color:'#1a5cad'},
+    {nom:'Sophie Bismuth',  color:'#6d28d9'},
+    {nom:'SCI JML Immo',    color:'#b8860b'},
+    {nom:'SCI BOBI Immo',   color:'#c0392b'},
+  ];
+
+  const container=document.getElementById('res-entite-container');
+  container.innerHTML='';
+
+  // Résumé rapide en grille
+  const summaryGrid=document.createElement('div');
+  summaryGrid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;';
+
+  ENT_DEF.forEach(ent=>{
+    const biensEnt=BIENS.filter(b=>b.e===ent.nom);
+    let loyPrevu=0,encEnt=0,creditEnt=0,chargesEnt=0,nbOcc=0,nbTotal=0;
+    biensEnt.forEach(b=>{
+      const s=mdata[b.id]||{};
+      nbTotal++;
+      if(s.st==='vac') return;
+      nbOcc++;
+      loyPrevu+=b.loy;
+      creditEnt+=b.crd;
+      chargesEnt+=b.chg;
+      if(s.enc!==undefined) encEnt+=s.enc;
+    });
+    const cfNet=encEnt-creditEnt-chargesEnt;
+    const txEnc=loyPrevu>0?Math.round(encEnt/loyPrevu*100):0;
+
+    const card=document.createElement('div');
+    card.style.cssText=`background:#fff;border:1px solid #d0d9ec;border-radius:10px;overflow:hidden;`;
+    card.innerHTML=`
+      <div style="background:${ent.color};padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-weight:800;font-size:13px;color:#fff;">${ent.nom}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;">${nbOcc}/${nbTotal} occupés</div>
+      </div>
+      <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#f5f7fc;border-radius:7px;padding:8px 10px;">
+          <div style="font-size:9px;color:#6272a0;font-family:monospace;text-transform:uppercase;margin-bottom:3px;">Loyer Attendu</div>
+          <div style="font-size:14px;font-weight:700;font-family:monospace;color:#003F87;">${fmt(loyPrevu)}</div>
+        </div>
+        <div style="background:#f5f7fc;border-radius:7px;padding:8px 10px;">
+          <div style="font-size:9px;color:#6272a0;font-family:monospace;text-transform:uppercase;margin-bottom:3px;">Encaissé</div>
+          <div style="font-size:14px;font-weight:700;font-family:monospace;color:${encEnt>=loyPrevu?'#0f7a45':'#c96a00'};">${fmt(encEnt)}</div>
+        </div>
+        <div style="background:#f5f7fc;border-radius:7px;padding:8px 10px;">
+          <div style="font-size:9px;color:#6272a0;font-family:monospace;text-transform:uppercase;margin-bottom:3px;">Crédits + Charges</div>
+          <div style="font-size:14px;font-weight:700;font-family:monospace;color:#c0392b;">${fmt(creditEnt+chargesEnt)}</div>
+        </div>
+        <div style="background:${cfNet>0?'#d1f0e0':cfNet<0?'#fce8e6':'#f5f7fc'};border-radius:7px;padding:8px 10px;">
+          <div style="font-size:9px;color:#6272a0;font-family:monospace;text-transform:uppercase;margin-bottom:3px;">CF Net Réel</div>
+          <div style="font-size:14px;font-weight:800;font-family:monospace;color:${cfNet>0?'#0f7a45':cfNet<0?'#c0392b':'#6272a0'};">${cfNet>0?'+':''}${fmt(cfNet)}</div>
+        </div>
+      </div>
+      <div style="padding:6px 14px 12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:6px;background:#e0e7f0;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(100,txEnc)}%;background:${txEnc>=100?'#0f7a45':txEnc>=80?'#c96a00':'#c0392b'};border-radius:3px;transition:width .4s;"></div>
+          </div>
+          <span style="font-family:monospace;font-size:11px;font-weight:700;color:${ent.color};">${txEnc}%</span>
+        </div>
+        <div style="font-size:10px;color:#6272a0;margin-top:3px;font-family:monospace;">Taux d'encaissement</div>
+      </div>`;
+    summaryGrid.appendChild(card);
+  });
+  container.appendChild(summaryGrid);
+
+  // Détail par entité : tableau par bien
+  ENT_DEF.forEach(ent=>{
+    const biensEnt=BIENS.filter(b=>b.e===ent.nom);
+    let encEnt=0,loyEnt=0,crdEnt=0,chgEnt=0;
+
+    const tbody=biensEnt.map(b=>{
+      const s=mdata[b.id]||{};
+      const e=s.enc||0;
+      const st=s.st||'att';
+      if(st==='vac') return `<tr style="opacity:.5;background:#f5f5f5;">
+        <td><b style="font-size:12px">${b.n}</b><br><small style="color:#999;font-size:10px">🚫 Non occupé</small></td>
+        <td style="text-align:left;font-size:11px;color:#999">${b.a}</td>
+        <td style="font-family:monospace;font-size:11px;text-align:right;color:#999">—</td>
+        <td colspan="5" style="text-align:center;font-size:11px;color:#999;font-family:monospace;">— vacant —</td>
+      </tr>`;
+      const cfBien=e-b.crd-b.chg;
+      const diff=e-b.loy;
+      encEnt+=e;loyEnt+=b.loy;crdEnt+=b.crd;chgEnt+=b.chg;
+      const ST_COL={enc:'#0f7a45',par:'#c96a00',ret:'#9a6f00',imp:'#c0392b',att:'#6272a0'};
+      const ST_LBL={enc:'✅ Enc.',par:'⚡ Partiel',ret:'🕐 Retard',imp:'❌ Impayé',att:'⏳'};
+      return `<tr>
+        <td><b style="font-size:12px">${b.n}</b><br><small style="color:var(--mu);font-size:10px">${b.l||'—'}</small></td>
+        <td style="text-align:left;font-size:11px;color:var(--mu)">${b.a}</td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#003F87">${fmt(b.loy)}</td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${e<b.loy?'#c96a00':'#0f7a45'}">${e>0?fmt(e):'—'}</td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${b.crd>0?fmt(b.crd):'—'}</td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;color:#c96a00">${b.chg>0?fmt(b.chg):'—'}</td>
+        <td style="text-align:right;font-family:monospace;font-size:13px;font-weight:800;color:${cfBien>0?'#0f7a45':cfBien<0?'#c0392b':'#6272a0'}">${e>0?(cfBien>0?'+':'')+fmt(cfBien):'—'}</td>
+        <td style="text-align:center"><span style="background:${ST_COL[st]||'#eee'}22;color:${ST_COL[st]};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;font-family:monospace;">${ST_LBL[st]}</span></td>
+      </tr>`;
+    }).join('');
+
+    const cfEntNet=encEnt-crdEnt-chgEnt;
+
+    const section=document.createElement('div');
+    section.style.marginBottom='20px';
+    section.innerHTML=`
+      <div style="background:${ent.color};color:#fff;border-radius:10px 10px 0 0;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-weight:800;font-size:13px;">${ent.nom} — ${MN[CUR]}</div>
+        <div style="display:flex;gap:20px;align-items:center;">
+          <div style="text-align:right;">
+            <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">Encaissé</div>
+            <div style="font-size:15px;font-weight:700;color:#6ee3a5;">${fmt(encEnt)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">CF Net</div>
+            <div style="font-size:15px;font-weight:800;color:${cfEntNet>0?'#6ee3a5':'#f87171'};">${cfEntNet>0?'+':''}${fmt(cfEntNet)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="border:1px solid #d0d9ec;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f0f5fc;">
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:left;">Bien / Locataire</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:left;">Adresse</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:right;">Loyer</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:right;">Encaissé</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:right;">Crédit</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:right;">Charges</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:right;">CF Net</th>
+              <th style="padding:8px 12px;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);text-align:center;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>${tbody}</tbody>
+          <tfoot>
+            <tr style="background:${ent.color}15;border-top:2px solid ${ent.color}44;">
+              <td colspan="2" style="padding:9px 12px;font-weight:800;font-size:12px;color:${ent.color};">TOTAL ${ent.nom}</td>
+              <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:700;color:#003F87;">${fmt(loyEnt)}</td>
+              <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:700;color:#0f7a45;">${fmt(encEnt)}</td>
+              <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:700;color:#c0392b;">${fmt(crdEnt)}</td>
+              <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:700;color:#c96a00;">${fmt(chgEnt)}</td>
+              <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:800;font-size:14px;color:${cfEntNet>0?'#0f7a45':'#c0392b'};">${cfEntNet>0?'+':''}${fmt(cfEntNet)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+    container.appendChild(section);
+  });
+
+  // ── VUE PAR BIEN ───────────────────────────────────────────────────
+  const lt=document.getElementById('res-loy-tb');
+  const ST_COL2={enc:'#0f7a45',par:'#c96a00',ret:'#9a6f00',imp:'#c0392b',vac:'#4a5568',att:'#6272a0'};
+  const ST_LBL2={enc:'✅ Enc.',par:'⚡ Partiel',ret:'🕐 Retard',imp:'❌ Impayé',vac:'🚫 Vacant',att:'⏳'};
+  lt.innerHTML=BIENS.map((b,i)=>{
+    const s=mdata[b.id]||{};
+    const e=s.enc||0;
+    const st=s.st||'att';
+    const cfBien=e-b.crd-b.chg;
+    return `<tr style="background:${i%2?'#fafbfd':'#fff'}">
+      <td><b style="font-size:12px">${b.n}</b><br><small style="color:var(--mu);font-size:10px">${b.l||'—'}</small></td>
+      <td style="text-align:left;font-size:11px;color:var(--mu)">${b.e}</td>
+      <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#003F87">${fmt(b.loy)}</td>
+      <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${e===0?'#c0392b':e<b.loy?'#c96a00':'#0f7a45'}">${e>0?fmt(e):'—'}</td>
+      <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${b.crd>0?fmt(b.crd):'—'}</td>
+      <td style="text-align:right;font-family:monospace;font-size:12px;color:#c96a00">${b.chg>0?fmt(b.chg):'—'}</td>
+      <td style="text-align:right;font-family:monospace;font-size:13px;font-weight:800;color:${cfBien>0?'#0f7a45':cfBien<0?'#c0392b':'#6272a0'}">${e>0?(cfBien>0?'+':'')+fmt(cfBien):'—'}</td>
+      <td style="text-align:right;font-size:11px;color:var(--mu)">${s.date||'—'}</td>
+      <td style="text-align:center"><span style="background:${ST_COL2[st]||'#eee'}22;color:${ST_COL2[st]};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;font-family:monospace;">${ST_LBL2[st]}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── VUE DÉPENSES ───────────────────────────────────────────────────
+  const dt=document.getElementById('res-dep-tb');
+  if(!deps.length){
+    dt.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--mu)">Aucune dépense saisie ce mois</td></tr>';
+  } else {
+    dt.innerHTML=deps.map(d=>`<tr>
+      <td>${CAT_ICO[d.cat]||'📎'} <span style="font-size:11px;font-family:monospace">${d.cat}</span></td>
+      <td style="text-align:left">${d.bien}</td>
+      <td style="text-align:left;font-weight:600">${d.lib}</td>
+      <td style="text-align:right;font-family:monospace;font-weight:700;color:#c0392b">${fmt(d.mont)}</td>
+      <td style="font-size:11px;color:var(--mu)">${d.date||'—'}</td>
+      <td style="font-size:11px;color:var(--mu)">${d.note||'—'}</td>
+    </tr>`).join('');
+  }
+}
+
+function buildResCharts(){
+  const mdata=LD[CUR]||{};
+  const deps=DD[CUR]||[];
+
+  // Chart 1 : CF net par entité
+  const ENT_DEF2=[
+    {nom:'Bismuth Jacques',color:'#003F87'},
+    {nom:'SCI SJ Immo',    color:'#005f9e'},
+    {nom:'SCI VB Immo',    color:'#1a5cad'},
+    {nom:'Sophie Bismuth', color:'#6d28d9'},
+    {nom:'SCI JML Immo',   color:'#b8860b'},
+    {nom:'SCI BOBI Immo',  color:'#c0392b'},
+  ];
+  const cfByEnt=ENT_DEF2.map(ent=>{
+    let e=0,c=0,ch=0;
+    BIENS.filter(b=>b.e===ent.nom).forEach(b=>{
+      const s=mdata[b.id]||{};
+      if(s.st!=='vac'&&s.enc!==undefined){e+=s.enc;c+=b.crd;ch+=b.chg;}
+    });
+    return e-c-ch;
+  });
+
+  if(window._cR1)window._cR1.destroy();
+  window._cR1=new Chart(document.getElementById('cR1'),{
+    type:'bar',
+    data:{
+      labels:ENT_DEF2.map(e=>e.nom.replace('Bismuth Jacques','B. Jacques').replace('Sophie Bismuth','S. Bismuth')),
+      datasets:[{
+        data:cfByEnt,
+        backgroundColor:cfByEnt.map((v,i)=>v>0?ENT_DEF2[i].color+'cc':'#c0392bcc'),
+        borderColor:cfByEnt.map((v,i)=>v>0?ENT_DEF2[i].color:'#c0392b'),
+        borderWidth:1.5,borderRadius:6,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>(ctx.raw>0?'+':'')+fmt(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#e8eef7'},ticks:{callback:v=>(v/1000).toFixed(0)+'k',font:{size:10}}}}}
+  });
+
+  // Chart 2 : dépenses par catégorie
+  if(window._cR2)window._cR2.destroy();
+  const cm={};deps.forEach(d=>{cm[d.cat]=(cm[d.cat]||0)+d.mont;});
+  const cats=Object.keys(cm);
+  if(cats.length){
+    window._cR2=new Chart(document.getElementById('cR2'),{type:'doughnut',data:{labels:cats.map(c=>CAT_ICO[c]+' '+c),datasets:[{data:cats.map(c=>cm[c]),backgroundColor:cats.map(c=>CAT_COL[c]),borderColor:'#fff',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{position:'right',labels:{boxWidth:9,padding:8,font:{size:10}}}}}});
+  }
+
+  // Chart 3 : tous les biens
+  if(window._cR3)window._cR3.destroy();
+  window._cR3=new Chart(document.getElementById('cR3'),{
+    type:'bar',
+    data:{
+      labels:BIENS.map(b=>b.n.substring(0,12)),
+      datasets:[
+        {label:'Attendu',data:BIENS.map(b=>b.loy),backgroundColor:'rgba(0,63,135,0.15)',borderColor:'#003F87',borderWidth:1,borderRadius:3},
+        {label:'Encaissé',data:BIENS.map(b=>mdata[b.id]?mdata[b.id].enc:0),backgroundColor:'rgba(15,122,69,0.5)',borderColor:'#0f7a45',borderWidth:1.5,borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:9,padding:10,font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{font:{size:8},maxRotation:45}},y:{grid:{color:'#e8eef7'},ticks:{font:{size:10}}}}}
+  });
+}
+
+// ══════════════════════════════════
+//  HISTORIQUE
+// ══════════════════════════════════
+function renderHisto(){
+  const q=(document.getElementById('histo-search')?.value||'').toLowerCase();
+  const tp=document.getElementById('histo-type')?.value||'';
+  const rows=[...H].reverse().filter(h=>{
+    const matchTp=!tp||(tp==='loyer'&&h.tp==='l')||(tp==='dep'&&h.tp==='d');
+    const matchQ=!q||JSON.stringify(h).toLowerCase().includes(q);
+    return matchTp&&matchQ;
+  });
+  const ST={enc:'<span class="bd bg">✅</span>',par:'<span class="bd bo">⚡</span>',ret:'<span class="bd" style="background:var(--go2);color:var(--go)">🕐</span>',imp:'<span class="bd br">❌</span>',att:'<span class="bd bk">⏳</span>'};
+  const tb=document.getElementById('histo-tb');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--mu)">Aucune opération</td></tr>';return;}
+  tb.innerHTML=rows.map(h=>h.tp==='l'?`<tr>
+    <td>${h.date||'—'}</td>
+    <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${MN[h.m]}</td>
+    <td><span class="bd bb">🏠 Loyer</span></td>
+    <td><b>${h.nom}</b><br><small style="color:var(--mu);font-size:10px">${h.ent}</small></td>
+    <td>${h.loc||'—'}</td>
+    <td class="pos">${fmt(h.prev)}</td>
+    <td class="${h.enc<h.prev?'neg':h.enc>h.prev?'pos':''}">${fmt(h.enc)}</td>
+    <td class="${(h.enc-h.prev)<0?'neg':(h.enc-h.prev)>0?'pos':''}">${h.enc===h.prev?'=':(h.enc-h.prev>0?'+':'')+fmt(h.enc-h.prev)}</td>
+    <td>${ST[h.st||'att']}</td>
+  </tr>`:`<tr>
+    <td>${h.date||'—'}</td>
+    <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${MN[h.m]}</td>
+    <td><span class="bd br">💸 ${h.cat}</span></td>
+    <td>${h.bien}</td><td>${h.lib}</td>
+    <td>—</td><td class="neg">${fmt(h.mont)}</td><td>—</td><td>—</td>
+  </tr>`).join('');
+}
+
+// ══════════════════════════════════
+//  BIENS
+// ══════════════════════════════════
+function buildBiensTable(){
+  document.getElementById('biens-tb').innerHTML=BIENS.map(b=>{
+    const net=b.loy-b.crd-b.chg;
+    return `<tr>
+      <td><b>${b.n}</b><br><small style="color:var(--mu);font-size:10px">${b.l||'Vacant'}</small></td>
+      <td style="text-align:left">${b.a}</td>
+      <td style="text-align:left;font-size:11px">${b.e}</td>
+      <td style="text-align:left"><span class="bd bk" style="font-size:9.5px">${b.t}</span></td>
+      <td class="pos">${fmt(b.loy)}</td>
+      <td class="${b.crd>0?'neg':''}">${b.crd>0?fmt(b.crd):'—'}</td>
+      <td class="${b.chg>0?'neu':''}">${b.chg>0?fmt(b.chg):'—'}</td>
+      <td class="${net<0?'neg':net<100?'neu':'pos'}">${net>0?'+':''}${net} €</td>
+      <td><span class="bd ${net<0?'br':net<100?'bo':'bg'}">${net<0?'⚠ Déficit':net<100?'Faible':'Rentable'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function addBien(){
+  BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg')});
+  populateBienSelect();closeModal('mo-bien');buildBiensTable();toast('✅ Bien ajouté');
+}
+
+// ══════════════════════════════════
+//  SIDEBAR & UTILS
+// ══════════════════════════════════
+function updateSidebar(){
+  const mdata=LD[CUR]||{};
+  let enc=0;BIENS.forEach(b=>{if(mdata[b.id])enc+=mdata[b.id].enc;});
+  const dep=(DD[CUR]||[]).reduce((s,d)=>s+d.mont,0);
+  const net=enc-CRED[CUR]-dep;
+  set('sb-enc',enc>0?fmt(enc):'—');
+  set('sb-dep',dep>0?fmt(dep):'—');
+  const nel=document.getElementById('sb-net');
+  if(nel){nel.textContent=enc>0||dep>0?(net>0?'+':'')+fmt(net):'—';nel.style.color=net>0?'#6ee3a5':net<0?'#f87171':'#fbbf24';}
+}
+
+function exportCSV(){
+  if(!H.length){toast('⚠️ Aucune donnée');return;}
+  const rows=H.map(h=>h.tp==='l'
+    ?[h.date,MN[h.m],'Loyer',h.nom,h.ent,h.loc,h.prev,h.enc,h.enc-h.prev,h.mode,h.st,h.note].join(';')
+    :[h.date,MN[h.m],'Dépense',h.bien,'','',0,-h.mont,-h.mont,'',h.cat,h.lib].join(';')
+  );
+  const csv='Date;Mois;Type;Bien;Entité;Locataire;Prévu;Réel;Écart;Mode;Statut/Cat;Détail\n'+rows.join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='patrimoine_'+new Date().getFullYear()+'.csv';a.click();
+}
+
+// utils
+function fmt(n){return Math.round(n||0).toLocaleString('fr-FR')+' €';}
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+function v(id){return document.getElementById(id)?.value||'';}
+function pf(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function ls(k,d){try{localStorage.setItem(k,JSON.stringify(d));}catch(e){}}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
+// ═══ ENT_COL_MAP ══════════════════════════════════════
+const ENT_COL_MAP = {
+  'Bismuth Jacques':'#003F87','Sophie Bismuth':'#6d28d9',
+  'SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
+  'SCI BOBI Immo':'#c0392b','SCI JML Immo':'#b8860b'
+};
+
+// ═══ SUPABASE ════════════════════════════════════════
+const _SBU = 'https://mighprmsvinoqobpjkfb.supabase.co';
+const _SBK = 'eyJhbGciOiJIUzI1NiIsInJlZiI6Im1pZ2hycG1zdmxucW9icGplZmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODc2MTIsImV4cCI6MjA5NTQ2MzYxMn0.XTFJTVMlh7QMeywZRx9NpoJ7YV8FRx_3vlh3b7zp2ks';
+function _sbh(){ return {'apikey':_SBK,'Authorization':'Bearer '+_SBK,'Content-Type':'application/json','Prefer':'return=representation'}; }
+async function _sbGet(t){ try{ var r=await fetch(_SBU+'/rest/v1/'+t+'?select=*',{headers:_sbh()}); return r.ok?await r.json():[]; }catch(e){return [];} }
+async function _sbUpsert(t,d,c){ try{ await fetch(_SBU+'/rest/v1/'+t,{method:'POST',headers:Object.assign({},_sbh(),{'Prefer':'resolution=merge-duplicates,return=minimal','on-conflict':c||''}),body:JSON.stringify(d)}); }catch(e){} }
+async function _sbInsert(t,d){ try{ var r=await fetch(_SBU+'/rest/v1/'+t,{method:'POST',headers:_sbh(),body:JSON.stringify(d)}); return r.ok?await r.json():null; }catch(e){return null;} }
+async function _sbDel(t,id){ try{ await fetch(_SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:_sbh()}); }catch(e){} }
+
+async function syncFromDB(){
+  try{
+    var lo=await _sbGet('loyers'); var de=await _sbGet('depenses'); var em=await _sbGet('locataire_emails');
+    lo.forEach(function(r){ if(!LD[r.mois])LD[r.mois]={}; LD[r.mois][r.bien_id]={enc:r.enc,date:r.date_paiement,mode:r.mode,st:r.statut,note:r.note}; });
+    de.forEach(function(r){ if(!DD[r.mois])DD[r.mois]=[]; if(!DD[r.mois].find(function(d){return d._dbid===r.id;})) DD[r.mois].push({_dbid:r.id,cat:r.cat,bien:r.bien,lib:r.lib,mont:r.mont,date:r.date_dep,perio:r.perio,ref:r.ref||'',note:r.note||''}); });
+    em.forEach(function(r){ LOCATAIRE_EMAILS[r.bien_id]=r.email; });
+    updateSidebar(); buildMoisBtns();
+    var pg=document.querySelector('.pg.on');
+    if(pg){ var id=pg.id.replace('pg-',''); if(id==='annuel')buildAnnuelPage(); else if(id==='loyers')buildLoyersPage(); }
+    console.log('Supabase sync OK');
+  }catch(e){console.warn('syncFromDB:',e);}
+}
+async function dbSaveLoyer(m,bid,d){ await _sbUpsert('loyers',{mois:m,bien_id:bid,enc:d.enc||0,date_paiement:d.date||'',mode:d.mode||'Virement',statut:d.st||'att',note:d.note||''},'mois,bien_id'); }
+async function dbSaveDep(m,dep){ var res=await _sbInsert('depenses',{mois:m,cat:dep.cat,bien:dep.bien,lib:dep.lib,mont:dep.mont,date_dep:dep.date||'',perio:dep.perio||'Ponctuel',ref:dep.ref||'',note:dep.note||''}); return res&&res[0]?res[0]:null; }
+async function dbDelDep(id){ await _sbDel('depenses',id); }
+async function dbSaveEmail(bid,email){ await _sbUpsert('locataire_emails',{bien_id:bid,email:email},'bien_id'); }
+
+// ═══ ENVOI QUITTANCE ═════════════════════════════════
+async function sendQuittanceEmail_EJS(bienId){
+  var b=BIENS.find(function(x){return x.id===bienId;});
+  if(!b) return toast('Bien introuvable');
+  var email=LOCATAIRE_EMAILS[bienId];
+  if(!email) return toast('Email locataire manquant');
+  var BL=getBailleur(b);
+  var s=(LD[CUR]||{})[b.id]||{};
+  var enc=s.enc||b.loy;
+  var mois=MN[CUR];
+  var ref='QUI-2025-'+String(CUR+1).padStart(2,'0')+'-'+String(b.id).padStart(3,'0');
+  var dat=s.date||new Date().toLocaleDateString('fr-FR');
+  var H='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;background:#f0f4fa}.w{max-width:680px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}.h{background:linear-gradient(135deg,#003F87,#1557b0);padding:28px 36px}.h h1{margin:0 0 4px;font-size:22px;font-weight:900;color:#fff}.h p{margin:0;font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase}.rf{float:right;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;color:#fff;margin-top:-34px}.b{padding:24px 36px}.r2{display:table;width:100%;margin-bottom:16px}.c{display:table-cell;width:46%;background:#f5f7fc;border-radius:8px;padding:12px 14px;border-left:3px solid #003F87;vertical-align:top}.cr{border-left-color:#0f7a45}.lb{font-size:10px;color:#6272a0;text-transform:uppercase;margin-bottom:4px}.nm{font-size:14px;font-weight:700;color:#0d1a35}.ad{font-size:12px;color:#6272a0;margin-top:3px;line-height:1.5}.mn{background:linear-gradient(135deg,#003F87,#1557b0);border-radius:8px;padding:16px 20px;margin:14px 0}.ml{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:4px}.mv{font-size:26px;font-weight:900;color:#fff}.ok{display:inline-block;background:rgba(255,255,255,.15);border-radius:5px;padding:2px 10px;font-size:12px;font-weight:700;color:#6ee3a5;margin-left:10px;vertical-align:middle}table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:8px 10px;font-size:12px;border-bottom:1px solid #e8eef7;color:#374151}td:last-child{font-weight:600;text-align:right}.lg{background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;padding:12px;font-size:11px;color:#6272a0;line-height:1.7;font-style:italic;margin:12px 0}.sg{display:table;width:100%;padding-top:12px;border-top:1px solid #e8eef7}.sl{display:table-cell;font-size:12px;color:#6272a0}.sr{display:table-cell;text-align:right}.sn{font-size:14px;font-weight:700;color:#003F87}.sq{font-size:11px;color:#6272a0}.ft{background:#f0f5fc;padding:10px 36px;font-size:10px;color:#6272a0}.ht{text-align:center;padding:10px;font-size:11px;color:#6272a0;font-style:italic}</style></head><body><div class="w"><div class="h"><div class="rf">'+ref+'</div><h1>Quittance de Loyer</h1><p>'+mois+' 2025 &middot; '+dat+'</p></div><div class="b"><div class="r2"><div class="c"><div class="lb">Bailleur</div><div class="nm">'+BL.nom+'</div><div class="ad">'+BL.adr+'<br>'+BL.cp+' '+BL.ville+(BL.siret?'<br>SIRET : '+BL.siret:'')+'</div></div><div style="display:table-cell;width:8%"></div><div class="c cr"><div class="lb">Locataire</div><div class="nm">'+(b.l||b.n)+'</div><div class="ad">'+b.a+'</div></div></div><div class="mn"><div class="ml">Loyer+charges &mdash; '+mois+' 2025</div><div class="mv">'+enc.toLocaleString('fr-FR')+' &euro;<span class="ok">&#10003; Pay&eacute;</span></div></div><table><tr><td>Bailleur</td><td>'+BL.nom+(BL.siret?' SIRET '+BL.siret:'')+'</td></tr><tr><td>Bien</td><td>'+b.n+'</td></tr><tr><td>Adresse</td><td>'+b.a+'</td></tr><tr><td>Loyer HC</td><td>'+(enc-b.chg).toLocaleString('fr-FR')+' &euro;</td></tr><tr><td>Charges</td><td>'+b.chg.toLocaleString('fr-FR')+' &euro;</td></tr><tr><td><strong>Total</strong></td><td><strong>'+enc.toLocaleString('fr-FR')+' &euro;</strong></td></tr><tr><td>P&eacute;riode</td><td>1er-30/31 '+mois+' 2025</td></tr><tr><td>Date paiement</td><td>'+dat+'</td></tr><tr><td>Mode</td><td>'+(s.mode||'Virement')+'</td></tr></table><div class="lg">La pr&eacute;sente quittance annule tous les re&ccedil;us pr&eacute;c&eacute;dents. D&eacute;livr&eacute;e conform&eacute;ment aux articles 7-1 de la loi n&deg; 89-462 du 6 juillet 1989.</div><div class="sg"><div class="sl">Fait le '+new Date().toLocaleDateString('fr-FR')+'<br>'+BL.ville+'</div><div class="sr"><div class="sn">'+BL.nom+'</div><div class="sq">Propri&eacute;taire/Bailleur</div></div></div></div><div class="ft">R&eacute;f. '+ref+' &middot; '+BL.nom+'</div><div class="ht">PDF : Fichier &rarr; Imprimer &rarr; Enregistrer en PDF</div></div></body></html>';
+  toast('Envoi en cours...');
+  try{
+    var res=await fetch('/.netlify/functions/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:email,nom:b.l||b.n,mois:mois,annee:'2025',bailleur:BL.nom,bien:b.n,adresse:b.a,loyer:enc.toLocaleString('fr-FR')+' EUR',html:H})});
+    var data=await res.json();
+    if(res.ok&&data.success) toast('Quittance envoyee a '+email);
+    else toast('Erreur: '+(data.error||'Verifiez config'));
+  }catch(e){toast('Erreur: '+e.message);}
+}
+
+
+function openModal(id){document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
+
+function populateBienSelect(){
+  const s=document.getElementById('d-bien');if(!s)return;
+  s.innerHTML='<option value="global">🌐 Global / Tous biens</option>'+BIENS.map(b=>`<option value="${b.id}">${b.e} — ${b.n}</option>`).join('');
+}
+
+// ══════════════════════════════════
+//  INIT
+// ══════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(syncFromDB,800);
+  populateBienSelect();
+  document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
+  buildMoisBtns();
+  updateSidebar();
+  buildAnnuelPage();
+  Chart.defaults.color='#6272a0';
+  Chart.defaults.font.family="'JetBrains Mono',monospace";
+  Chart.defaults.font.size=11;
+});
+
+// ═══════════════════════════════
+//  CRÉDITS
+// ═══════════════════════════════
+let CREDITS_DATA = JSON.parse(localStorage.getItem('immo_credits') || 'null');
+
+// Données initiales pré-remplies depuis le fichier Excel
+if (!CREDITS_DATA) {
+  CREDITS_DATA = [
+    {id:1,  bienId:2,  banque:'—', mens:494,  cap:null, fin:'',     note:''},
+    {id:2,  bienId:3,  banque:'—', mens:853,  cap:null, fin:'',     note:''},
+    {id:3,  bienId:4,  banque:'—', mens:1017, cap:null, fin:'',     note:''},
+    {id:4,  bienId:5,  banque:'—', mens:1017, cap:null, fin:'',     note:''},
+    {id:5,  bienId:6,  banque:'—', mens:779,  cap:null, fin:'',     note:''},
+    {id:6,  bienId:9,  banque:'—', mens:1594, cap:null, fin:'',     note:'SCI VB Immo global'},
+    {id:7,  bienId:14, banque:'—', mens:1817, cap:null, fin:'',     note:'SCI SJ Gagny global'},
+    {id:8,  bienId:15, banque:'—', mens:472,  cap:null, fin:'',     note:'Sophie Bismuth'},
+    {id:9,  bienId:20, banque:'—', mens:2195, cap:null, fin:'',     note:'SCI SJ 5Q global'},
+    {id:10, bienId:26, banque:'—', mens:3300, cap:null, fin:'',     note:'SCI JML global'},
+    {id:11, bienId:35, banque:'—', mens:2447, cap:null, fin:'',     note:'SCI BOBI global'},
+    {id:12, bienId:40, banque:'—', mens:2670, cap:null, fin:'',     note:'PSB Pasteur global'},
+    {id:13, bienId:41, banque:'—', mens:1806, cap:null, fin:'',     note:'Les Pavillons'},
+    {id:14, bienId:43, banque:'—', mens:2024, cap:null, fin:'',     note:'Le Raincy'},
+    {id:15, bienId:44, banque:'—', mens:4115, cap:null, fin:'',     note:'Rue des Pyrénées'},
+  ];
+  localStorage.setItem('immo_credits', JSON.stringify(CREDITS_DATA));
+}
+
+// Groupes par entité pour affichage
+const CREDIT_ENTITES = [
+  'Bismuth Jacques',
+  'SCI SJ Immo',
+  'SCI VB Immo',
+  'Sophie Bismuth',
+  'SCI JML Immo',
+  'SCI BOBI Immo',
+];
+
+function buildCreditsPage() {
+  // KPIs
+  const totalMens = CREDITS_DATA.reduce((s,c) => s + (c.mens||0), 0);
+  const totalCap  = CREDITS_DATA.filter(c => c.cap).reduce((s,c) => s + (c.cap||0), 0);
+  set('cred-kpi-mens', fmt(totalMens));
+  set('cred-kpi-cap',  totalCap > 0 ? fmt(totalCap) : '— (à renseigner)');
+  set('cred-kpi-nb',   CREDITS_DATA.length + ' crédit' + (CREDITS_DATA.length > 1 ? 's' : ''));
+
+  const container = document.getElementById('cred-table-container');
+  container.innerHTML = '';
+
+  // Regrouper par entité
+  CREDIT_ENTITES.forEach(entNom => {
+    const bienIds = BIENS.filter(b => b.e === entNom).map(b => b.id);
+    const créditsEnt = CREDITS_DATA.filter(c => bienIds.includes(c.bienId));
+    if (!créditsEnt.length) return;
+
+    const entTotalMens = créditsEnt.reduce((s,c) => s + (c.mens||0), 0);
+    const entTotalCap  = créditsEnt.filter(c=>c.cap).reduce((s,c) => s + (c.cap||0), 0);
+
+    const entColors = {
+      'Bismuth Jacques':'#003F87','SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
+      'Sophie Bismuth':'#6d28d9','SCI JML Immo':'#b8860b','SCI BOBI Immo':'#c0392b',
+    };
+    const col = entColors[entNom] || '#374151';
+
+    // Header entité
+    const hdr = document.createElement('div');
+    hdr.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:${col};color:#fff;border-radius:10px;padding:11px 18px;margin-bottom:8px;margin-top:16px;`;
+    hdr.innerHTML = `
+      <div>
+        <div style="font-weight:800;font-size:14px;">🏢 ${entNom}</div>
+        <div style="font-size:10px;opacity:.65;font-family:monospace;">${créditsEnt.length} crédit(s) · Mensualités : ${fmt(entTotalMens)}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">Capital Restant</div>
+        <div style="font-size:16px;font-weight:700;color:${entTotalCap>0?'#fbbf24':'rgba(255,255,255,.4)'}">
+          ${entTotalCap > 0 ? fmt(entTotalCap) : '— à renseigner'}
+        </div>
+      </div>`;
+    container.appendChild(hdr);
+
+    // Table
+    const wrap = document.createElement('div');
+    wrap.className = 'tw';
+    wrap.style.marginBottom = '6px';
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bien / Locataire</th>
+            <th>Banque</th>
+            <th>Mensualité</th>
+            <th>Capital Restant Dû</th>
+            <th>Date de Fin</th>
+            <th>Notes</th>
+            <th style="text-align:center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${créditsEnt.map(c => {
+            const bien = BIENS.find(b => b.id === c.bienId) || {};
+            const moisRestants = c.fin ? Math.max(0, Math.round((new Date(c.fin) - new Date()) / (1000*60*60*24*30))) : null;
+            const finAlert = moisRestants !== null && moisRestants < 24;
+            return `<tr>
+              <td><b style="font-size:12px">${bien.n || '—'}</b><br><small style="color:var(--mu);font-size:10px">${bien.l || ''} · ${bien.a || ''}</small></td>
+              <td style="text-align:left">
+                <input type="text" value="${c.banque||''}" placeholder="Banque…"
+                  onchange="updateCredit(${c.id},'banque',this.value)"
+                  style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;background:var(--bg);outline:none;width:130px;">
+              </td>
+              <td style="text-align:right;font-family:monospace;font-weight:700;color:#c0392b">${fmt(c.mens)}</td>
+              <td style="text-align:right">
+                <input type="number" value="${c.cap||''}" placeholder="0"
+                  onchange="updateCredit(${c.id},'cap',parseFloat(this.value)||null)"
+                  style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;font-family:monospace;background:var(--bg);outline:none;width:130px;text-align:right;">
+              </td>
+              <td style="text-align:right">
+                <input type="date" value="${c.fin||''}"
+                  onchange="updateCredit(${c.id},'fin',this.value)"
+                  style="border:1px solid ${finAlert?'#c0392b':'var(--brd)'};border-radius:5px;padding:4px 8px;font-size:12px;background:${finAlert?'#fce8e6':'var(--bg)'};outline:none;">
+                ${moisRestants !== null ? `<div style="font-size:10px;font-family:monospace;color:${finAlert?'#c0392b':'var(--mu)'};">${moisRestants} mois restants</div>` : ''}
+              </td>
+              <td style="text-align:left">
+                <input type="text" value="${c.note||''}" placeholder="Note…"
+                  onchange="updateCredit(${c.id},'note',this.value)"
+                  style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;background:var(--bg);outline:none;width:140px;">
+              </td>
+              <td style="text-align:center">
+                <button onclick="saveAllCredits()" class="btn btn-g btn-sm">💾</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--bl4);border-top:2px solid var(--bl)">
+            <td colspan="2" style="padding:9px 12px;font-weight:700;color:var(--bl)">TOTAL ${entNom}</td>
+            <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:800;color:#c0392b">${fmt(entTotalMens)}</td>
+            <td style="padding:9px 12px;text-align:right;font-family:monospace;font-weight:700;color:var(--bl)">${entTotalCap > 0 ? fmt(entTotalCap) : '—'}</td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
+      </table>`;
+    container.appendChild(wrap);
+  });
+
+  // Bouton sauvegarder global
+  const saveBtn = document.createElement('div');
+  saveBtn.style.cssText = 'display:flex;justify-content:flex-end;margin-top:16px;';
+  saveBtn.innerHTML = `<button class="btn btn-p" onclick="saveAllCredits()">💾 Tout enregistrer</button>`;
+  container.appendChild(saveBtn);
+
+  // Populate modal select
+  const sel = document.getElementById('cr-bien');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+      BIENS.map(b => `<option value="${b.id}">${b.e} — ${b.n}</option>`).join('');
+  }
+}
+
+function updateCredit(id, field, val) {
+  const c = CREDITS_DATA.find(c => c.id === id);
+  if (c) c[field] = val;
+}
+
+function saveAllCredits() {
+  localStorage.setItem('immo_credits', JSON.stringify(CREDITS_DATA));
+  toast('✅ Crédits enregistrés');
+}
+
+function saveCredit() {
+  const bienId = parseInt(document.getElementById('cr-bien').value);
+  if (!bienId) { toast('⚠️ Sélectionnez un bien'); return; }
+  const newId = CREDITS_DATA.length > 0 ? Math.max(...CREDITS_DATA.map(c=>c.id)) + 1 : 1;
+  CREDITS_DATA.push({
+    id:     newId,
+    bienId: bienId,
+    banque: document.getElementById('cr-banque').value || '—',
+    mens:   parseFloat(document.getElementById('cr-mens').value) || 0,
+    cap:    parseFloat(document.getElementById('cr-cap').value) || null,
+    fin:    document.getElementById('cr-fin').value || '',
+    note:   document.getElementById('cr-note').value || '',
+  });
+  saveAllCredits();
+  closeModal('mo-credit');
+  buildCreditsPage();
+  toast('✅ Crédit ajouté');
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  QUITTANCES & ÉCHÉANCIER
+// ═══════════════════════════════════════════════════════
+
+// ═══ BAILLEURS PAR ENTITÉ ═══════════════════════════════════════
+const BAILLEURS = {
+  'Bismuth Jacques': { nom:'Bismuth Jacques',  siret:'',               adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+  'Sophie Bismuth':  { nom:'Bismuth Sophie',   siret:'',               adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+  'SCI SJ Immo':     { nom:'SCI SJ IMMO',      siret:'81493201800025', adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+  'SCI VB Immo':     { nom:'SCI VB IMMO',      siret:'82947831200020', adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+  'SCI BOBI Immo':   { nom:'SCI BOBI IMMO',    siret:'90772056900017', adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+  'SCI JML Immo':    { nom:'SCI JML IMMO',     siret:'90994538800017', adr:'13 place de la gare', cp:'93250', ville:'Villemomble', email:'', tel:'' },
+};
+
+// Charger les emails/tels sauvegardés
+const _bSaved = JSON.parse(localStorage.getItem('immo_bailleurs')||'{}');
+Object.keys(BAILLEURS).forEach(k=>{ if(_bSaved[k]){BAILLEURS[k].email=_bSaved[k].email||''; BAILLEURS[k].tel=_bSaved[k].tel||'';} });
+
+function getBailleur(b){ return BAILLEURS[b.e] || BAILLEURS['Bismuth Jacques']; }
+
+let BAILLEUR = BAILLEURS['Bismuth Jacques'];
+let EMAIL_CONFIG = JSON.parse(localStorage.getItem('immo_email_config') || 'null') || {
+  key:'re_K7TPekDw_3HFGthu7PG8Qvc4M5q9kb7E8',
+  from:'onboarding@resend.dev',
+  subject:'Quittance de loyer — {mois} {annee}',
+  body:'Bonjour,\n\nVeuillez trouver ci-joint votre quittance de loyer pour {mois} {annee}.\n\nCordialement,\n{bailleur}'
+};
+let LOCATAIRE_EMAILS = JSON.parse(localStorage.getItem('immo_loc_emails') || '{}');
+let curPreviewBien = null;
+
+// ── Tabs quittances ──
+function switchQTab(view, el){
+  document.querySelectorAll('.q-tab').forEach(t=>{
+    t.style.color='var(--mu)';t.style.fontWeight='500';t.style.borderBottomColor='transparent';
+  });
+  el.style.color='var(--bl)';el.style.fontWeight='700';el.style.borderBottomColor='var(--bl)';
+  ['generation','echeancier','config-email'].forEach(v=>{
+    const d=document.getElementById('q-view-'+v);
+    if(d) d.style.display=v===view?'block':'none';
+  });
+  if(view==='echeancier') initEcheancier();
+  if(view==='config-email') loadEmailConfig();
+}
+
+// ── Build quittances page ──
+function buildQuittancesPage(){
+  set('q-mois-label', MN[CUR]+' 2025');
+  buildBailleursGrid();
+
+  const mdata = LD[CUR]||{};
+  const container = document.getElementById('q-list-container');
+  container.innerHTML='';
+
+  // Grouper par entité
+  const ENT_COLORS = {
+    'Bismuth Jacques':'#003F87','SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
+    'Sophie Bismuth':'#6d28d9','SCI JML Immo':'#b8860b','SCI BOBI Immo':'#c0392b'
+  };
+
+  const entites = [...new Set(BIENS.map(b=>b.e))];
+  entites.forEach(entNom=>{
+    const biensEnt = BIENS.filter(b=>b.e===entNom);
+    const col = ENT_COLORS[entNom]||'#374151';
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText=`background:${col};color:#fff;border-radius:8px 8px 0 0;padding:10px 16px;font-weight:800;font-size:13px;margin-top:14px;`;
+    hdr.textContent = entNom;
+    container.appendChild(hdr);
+
+    const rows = biensEnt.map(b=>{
+      const s = mdata[b.id]||{};
+      const isEnc = s.st==='enc'||s.st==='par';
+      const email = LOCATAIRE_EMAILS[b.id]||'';
+      const statusColor = isEnc?'#0f7a45':s.st==='vac'?'#6272a0':'#c0392b';
+      const statusLabel = isEnc?'✅ Encaissé':s.st==='imp'?'❌ Impayé':s.st==='vac'?'🚫 Vacant':s.st==='ret'?'🕐 Retard':'⏳ Attente';
+      return `<tr style="border-bottom:1px solid #e8eef7;${!isEnc?'opacity:.6':''}">
+        <td style="padding:10px 14px;text-align:center;">
+          <input type="checkbox" class="q-check" data-bien="${b.id}" ${isEnc?'':'disabled'}
+            style="width:16px;height:16px;accent-color:var(--bl);cursor:${isEnc?'pointer':'not-allowed'}">
+        </td>
+        <td style="padding:10px 14px;">
+          <div style="font-weight:700;font-size:12.5px;">${b.n}</div>
+          <div style="font-size:10px;color:var(--mu);font-family:monospace;">${b.l||'Vacant'} · ${b.a}</div>
+        </td>
+        <td style="padding:10px 14px;text-align:right;font-family:monospace;font-size:13px;font-weight:700;color:#003F87;">${b.loy.toLocaleString('fr-FR')} €</td>
+        <td style="padding:10px 14px;text-align:right;font-family:monospace;font-size:13px;font-weight:700;color:${s.enc?'#0f7a45':'#6272a0'}">${s.enc>0?s.enc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td style="padding:10px 14px;">
+          <input type="email" value="${email}" placeholder="email@locataire.com"
+            onchange="LOCATAIRE_EMAILS[${b.id}]=this.value;localStorage.setItem('immo_loc_emails',JSON.stringify(LOCATAIRE_EMAILS));dbSaveEmail(${b.id},this.value)"
+            style="border:1px solid var(--brd);border-radius:5px;padding:5px 9px;font-size:11px;background:var(--bg);outline:none;width:180px;">
+        </td>
+        <td style="padding:10px 14px;text-align:center;">
+          <span style="background:${statusColor}22;color:${statusColor};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;font-family:monospace;">${statusLabel}</span>
+        </td>
+        <td style="padding:10px 14px;text-align:center;">
+          <div style="display:flex;gap:5px;justify-content:center;">
+            <button onclick="previewQuittance(${b.id})" class="btn btn-s btn-sm" ${isEnc?'':'disabled'} style="${isEnc?'':'opacity:.4;cursor:not-allowed'}">👁️ Voir</button>
+            <button onclick="sendQuittanceEmail_EJS(${b.id})" class="btn btn-sm" style="background:${isEnc?'#0f7a45':'#ccc'};color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;cursor:${isEnc?'pointer':'not-allowed'}">✉️</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const table = document.createElement('div');
+    table.style.cssText='border:1px solid #d0d9ec;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;margin-bottom:4px;';
+    table.innerHTML=`<table style="width:100%;border-collapse:collapse;background:#fff;">
+      <thead><tr style="background:#f0f5fc;">
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);width:40px;"></th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:left;">Bien / Locataire</th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:right;">Loyer</th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:right;">Encaissé</th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);">Email Locataire</th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:center;">Statut</th>
+        <th style="padding:8px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:center;">Actions</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    container.appendChild(table);
+  });
+}
+
+// ── Générer HTML d'une quittance ────────────────────────────────────
+function genQuittanceHTML(b){
+  const s = (LD[CUR]||{})[b.id]||{};
+  const BL = getBailleur(b);
+  const enc = s.enc||b.loy;
+  const moisNom = MN[CUR];
+  const annee = 2025;
+  const refNum = `QUI-${annee}-${String(CUR+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
+  const date = s.date || new Date().toLocaleDateString('fr-FR');
+
+  // Montant en lettres (simplifié)
+  function montantEnLettres(n){
+    const u=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix',
+             'onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'];
+    const d=['','','vingt','trente','quarante','cinquante','soixante','soixante','quatre-vingt','quatre-vingt'];
+    if(n===0)return'zéro';
+    let txt='';
+    const mill=Math.floor(n/1000);
+    const cent=Math.floor((n%1000)/100);
+    const diz=Math.floor((n%100)/10);
+    const uni=n%10;
+    if(mill>0)txt+=(mill===1?'mille':u[mill]<=' '?'mille':u[mill]+' mille')+' ';
+    if(cent>0)txt+=(cent===1?'cent':u[cent]+' cent')+' ';
+    const r=n%100;
+    if(r>0&&r<20)txt+=u[r];
+    else if(r>=20){txt+=d[diz];if(diz===7||diz===9)txt+='-'+(r<70?u[r-60]:u[r-80]);else if(uni>0)txt+='-'+u[uni];}
+    return txt.trim().charAt(0).toUpperCase()+txt.trim().slice(1);
+  }
+
+  const encLettres = montantEnLettres(Math.round(enc)) + ' euros';
+
+  return `
+    <div class="quitance-preview" id="quittance-print-${b.id}">
+      <div class="q-header">
+        <div class="q-ref">${refNum}</div>
+        <h2>Quittance de Loyer</h2>
+        <div class="q-sub">${moisNom} ${annee} · Émise le ${date}</div>
+      </div>
+      <div class="q-body">
+        <div class="q-parties">
+          <div class="q-party-box">
+            <div class="q-party-label">Bailleur</div>
+            <div class="q-party-name">${BL.nom||'À configurer'}</div>
+            <div class="q-party-addr">${BL.adr||''}<br>${BL.cp||''} ${BL.ville||''}</div>
+          </div>
+          <div class="q-party-box right">
+            <div class="q-party-label">Locataire</div>
+            <div class="q-party-name">${b.l||'Locataire'}</div>
+            <div class="q-party-addr">${b.a}</div>
+          </div>
+        </div>
+
+        <div class="q-montant-box">
+          <div>
+            <div class="qm-label">Loyer + charges du mois de ${moisNom} ${annee}</div>
+            <div class="qm-val">${enc.toLocaleString('fr-FR')} €</div>
+            <div class="qm-lettres">${encLettres}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;text-transform:uppercase;margin-bottom:4px;">Statut</div>
+            <div style="background:rgba(255,255,255,.15);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;color:#6ee3a5;">✅ Payé</div>
+          </div>
+        </div>
+
+        <table class="q-details-table">
+          <tr><td>Bailleur</td><td>${BL.nom}${BL.siret?' · SIRET : '+BL.siret:''}</td></tr>
+          <tr><td>Bien loué</td><td>${b.n}</td></tr>
+          <tr><td>Adresse du bien</td><td>${b.a}</td></tr>
+          <tr><td>Loyer hors charges</td><td>${(enc - b.chg).toLocaleString('fr-FR')} €</td></tr>
+          <tr><td>Charges</td><td>${b.chg.toLocaleString('fr-FR')} €</td></tr>
+          <tr><td>Total encaissé</td><td>${enc.toLocaleString('fr-FR')} €</td></tr>
+          <tr><td>Période</td><td>Du 1er au 30/31 ${moisNom} ${annee}</td></tr>
+          <tr><td>Date de paiement</td><td>${date}</td></tr>
+          <tr><td>Mode de paiement</td><td>${s.mode||'Virement bancaire'}</td></tr>
+        </table>
+
+        <div class="q-legal">
+          La présente quittance annule tous les reçus qui auraient pu être établis précédemment en règlement
+          du loyer mentionné ci-dessus. Elle est délivrée pour valoir ce que de droit, conformément
+          aux articles 7-1 de la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs.
+        </div>
+
+        <div class="q-signature">
+          <div class="q-sig-left">
+            <div style="font-size:11px;color:var(--mu);">Fait le ${new Date().toLocaleDateString('fr-FR')}</div>
+            <div style="font-size:11px;color:var(--mu);margin-top:4px;">${BL.ville||''}</div>
+          </div>
+          <div class="q-sig-right">
+            <div class="qs-name">${BL.nom||'Bailleur'}</div>
+            <div class="qs-qual">Propriétaire / Bailleur</div>
+            ${BL.tel?`<div style="font-size:11px;color:var(--mu);margin-top:3px;">${BL.tel}</div>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="q-footer">
+        <div class="qf-txt">Réf. ${refNum} · ${BL.nom||'Bailleur'} · ${BL.email||''}</div>
+        <div class="qf-txt">Document généré automatiquement · Patrimoine Immobilier 2025</div>
+      </div>
+    </div>`;
+}
+
+// ── Preview quittance ────────────────────────────────────────────────
+function previewQuittance(bienId){
+  const b = BIENS.find(x=>x.id===bienId);
+  if(!b) return;
+  curPreviewBien = b;
+  const s = (LD[CUR]||{})[b.id]||{};
+  if(s.st!=='enc'&&s.st!=='par'){toast('⚠️ Le loyer doit être encaissé pour générer une quittance');return;}
+  const container = document.getElementById('q-preview-container');
+  const content   = document.getElementById('q-preview-content');
+  content.innerHTML = genQuittanceHTML(b);
+  container.style.display = 'block';
+  container.scrollIntoView({behavior:'smooth'});
+}
+
+function selAllQuittances(){
+  document.querySelectorAll('.q-check:not([disabled])').forEach(c=>c.checked=true);
+}
+
+function genAllSelected(){
+  const checked = [...document.querySelectorAll('.q-check:checked')];
+  if(!checked.length){toast('⚠️ Aucun locataire sélectionné');return;}
+  // Aperçu du premier sélectionné
+  previewQuittance(parseInt(checked[0].dataset.bien));
+}
+
+// ── Impression / PDF ──────────────────────────────────────────────────
+function printQuittance(){
+  if(!curPreviewBien){toast('⚠️ Aucune quittance à imprimer');return;}
+  const html = genQuittanceHTML(curPreviewBien);
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Sora',sans-serif;background:#fff;padding:0;}
+      .quitance-preview{max-width:794px;margin:0 auto;}
+      .q-header{background:linear-gradient(135deg,#003F87,#1557b0);padding:28px 36px 22px;position:relative;}
+      .q-header h2{font-size:24px;font-weight:800;color:#fff;margin-bottom:4px;}
+      .q-header .q-sub{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:.06em;text-transform:uppercase;}
+      .q-header .q-ref{position:absolute;top:20px;right:36px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;}
+      .q-body{padding:28px 36px;}
+      .q-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
+      .q-party-box{background:#f5f7fc;border-radius:8px;padding:14px 16px;border-left:3px solid #003F87;}
+      .q-party-box.right{border-left-color:#0f7a45;}
+      .q-party-label{font-size:10px;color:#6272a0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+      .q-party-name{font-size:15px;font-weight:700;}
+      .q-party-addr{font-size:12px;color:#6272a0;margin-top:3px;line-height:1.5;}
+      .q-montant-box{background:linear-gradient(135deg,#003F87,#1557b0);border-radius:10px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;}
+      .qm-label{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;}
+      .qm-val{font-size:28px;font-weight:900;color:#fff;}
+      .qm-lettres{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;font-style:italic;}
+      .q-details-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+      .q-details-table td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e8eef7;}
+      .q-details-table td:last-child{font-weight:600;text-align:right;}
+      .q-legal{background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;padding:12px 16px;font-size:11px;color:#6272a0;line-height:1.7;font-style:italic;margin-bottom:20px;}
+      .q-signature{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e8eef7;}
+      .q-footer{background:#f0f5fc;padding:12px 36px;display:flex;justify-content:space-between;}
+      .qf-txt{font-size:10px;color:#6272a0;}
+      @media print{body{margin:0;}}
+    </style>
+    </head><body>${html}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
+
+// ── Envoi email via Resend ───────────────────────────────────────────
+async function sendSingleQuittance(bienId){
+  const b = BIENS.find(x=>x.id===bienId);
+  if(!b){toast('⚠️ Bien introuvable');return;}
+  const email = LOCATAIRE_EMAILS[bienId];
+  if(!email){toast("Renseignez l'email du locataire");return;}
+  if(!EMAIL_CONFIG.key){toast("Configurez la cle API Resend d'abord");return;}
+
+  const htmlContent = genQuittanceHTML(b).replace(/[\r\n]/g,' ');
+  const subj = EMAIL_CONFIG.subject.replace('{mois',MN[CUR]).replace('{annee}','2025').replace('{mois}',MN[CUR]);
+  const body = EMAIL_CONFIG.body.replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025').replace(/\{bailleur\}/g,BAILLEUR.nom||'Le Bailleur');
+
+  toast('📤 Envoi en cours...');
+  try {
+    const resp = await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+EMAIL_CONFIG.key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        from: EMAIL_CONFIG.from||'onboarding@resend.dev',
+        to: [email],
+        subject: subj,
+        html: `<pre style="font-family:Arial;font-size:13px;white-space:pre-wrap;">${body}</pre><br><hr><br>${htmlContent}`,
+      })
+    });
+    if(resp.ok){
+      toast('✅ Quittance envoyée à '+email);
+    } else {
+      const err = await resp.json();
+      toast('❌ Erreur : '+(err.message||'Vérifiez la config email'));
+    }
+  } catch(e){
+    toast('❌ Erreur réseau : '+e.message);
+  }
+}
+
+function sendQuittanceEmail(){
+  if(curPreviewBien) sendSingleQuittance(curPreviewBien.id);
+}
+
+async function sendAllSelected(){
+  const checked = [...document.querySelectorAll('.q-check:checked')];
+  if(!checked.length){toast('⚠️ Aucun locataire sélectionné');return;}
+  let sent=0, errors=0;
+  for(const cb of checked){
+    const bienId = parseInt(cb.dataset.bien);
+    const email = LOCATAIRE_EMAILS[bienId];
+    if(email && EMAIL_CONFIG.key){
+      await sendSingleQuittance(bienId);
+      sent++;
+      await new Promise(r=>setTimeout(r,300));
+    } else { errors++; }
+  }
+  toast(`✅ ${sent} quittance(s) envoyée(s)${errors>0?' · '+errors+' sans email':''}`);
+}
+
+// ── Relances auto impayés ────────────────────────────────────────────
+function checkRelancesImpayes(){
+  const today = new Date();
+  BIENS.forEach(b=>{
+    const s = (LD[CUR]||{})[b.id]||{};
+    if(s.st==='imp'||s.st==='ret'){
+      const dateLoyer = s.date ? new Date(s.date) : new Date(today.getFullYear(),CUR,1);
+      const joursRetard = Math.floor((today-dateLoyer)/(1000*60*60*24));
+      if(joursRetard>=15){
+        const email = LOCATAIRE_EMAILS[b.id];
+        if(email && EMAIL_CONFIG.key){
+          sendRelance(b, joursRetard);
+        }
+      }
+    }
+  });
+}
+
+async function sendRelance(b, joursRetard){
+  if(!EMAIL_CONFIG.key||!LOCATAIRE_EMAILS[b.id]) return;
+  const subj = `⚠️ Relance - Loyer impayé - ${MN[CUR]} 2025`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+      <div style="background:#c0392b;color:#fff;padding:20px;border-radius:8px 8px 0 0;">
+        <h2 style="margin:0;font-size:18px;">⚠️ Relance — Loyer Impayé</h2>
+        <p style="margin:4px 0 0;font-size:12px;opacity:.8;">${MN[CUR]} 2025 · ${b.n}</p>
+      </div>
+      <div style="background:#fff;border:1px solid #e8eef7;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+        <p>Bonjour <strong>${b.l||'Madame, Monsieur'}</strong>,</p>
+        <p style="margin:12px 0;">Sauf erreur de notre part, nous n'avons pas reçu votre règlement du loyer du mois de <strong>${MN[CUR]} 2025</strong> 
+        pour le bien situé à <strong>${b.a}</strong>.</p>
+        <div style="background:#fce8e6;border-left:3px solid #c0392b;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;">
+          <strong>Montant dû : ${b.loy.toLocaleString('fr-FR')} €</strong><br>
+          <span style="font-size:12px;color:#666;">Retard constaté : ${joursRetard} jours</span>
+        </div>
+        <p>Nous vous remercions de bien vouloir régulariser cette situation dans les plus brefs délais.</p>
+        <p style="margin-top:20px;">Cordialement,<br><strong>${BAILLEUR.nom||'Le Bailleur'}</strong></p>
+      </div>
+    </div>`;
+  try {
+    await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+EMAIL_CONFIG.key,'Content-Type':'application/json'},
+      body:JSON.stringify({from:EMAIL_CONFIG.from||'onboarding@resend.dev',to:[LOCATAIRE_EMAILS[b.id]],subject:subj,html})
+    });
+    toast('⚠️ Relance envoyée à '+b.l+' ('+joursRetard+'j de retard)');
+  } catch(e){}
+}
+
+// ── Échéancier ──────────────────────────────────────────────────────
+function initEcheancier(){
+  const sel = document.getElementById('ech-locataire-sel');
+  sel.innerHTML = BIENS.map(b=>`<option value="${b.id}">${b.e} — ${b.n} (${b.l||'Vacant'})</option>`).join('');
+  buildEcheancier();
+}
+
+function buildEcheancier(){
+  const bienId = parseInt(document.getElementById('ech-locataire-sel').value);
+  const b = BIENS.find(x=>x.id===bienId);
+  if(!b) return;
+
+  const rows = MONTHS.map((moisNom,mi)=>{
+    const s = (LD[mi]||{})[b.id]||{};
+    const enc = s.enc||0;
+    const diff = enc-b.loy;
+    const isPaid = s.st==='enc'||s.st==='par';
+    const isLate = s.st==='ret'||s.st==='imp';
+    const isVac  = s.st==='vac';
+    const rowClass = isVac?'':'isPaid?"paid":isLate?"late":"pending"';
+    const stColors = {enc:'#0f7a45',par:'#c96a00',ret:'#9a6f00',imp:'#c0392b',vac:'#6272a0',att:'#6272a0'};
+    const stLabels = {enc:'✅ Payé',par:'⚡ Partiel',ret:'🕐 Retard',imp:'❌ Impayé',vac:'🚫 Vacant',att:'⏳ Att.'};
+    const st = s.st||'att';
+    return `<tr class="${isPaid?'paid':isLate?'late':'pending'}" style="border-bottom:1px solid #e8eef7;">
+      <td style="padding:10px 14px;font-weight:700;font-family:monospace;font-size:13px;">${moisNom}</td>
+      <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:#003F87;">${b.loy.toLocaleString('fr-FR')} €</td>
+      <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:${enc>0?'#0f7a45':'#6272a0'}">${enc>0?enc.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td style="padding:10px 14px;text-align:right;font-family:monospace;color:${diff<0?'#c0392b':diff>0?'#0f7a45':'#6272a0'}">${enc>0?(diff===0?'=':(diff>0?'+':'')+diff.toLocaleString('fr-FR')+' €'):'—'}</td>
+      <td style="padding:10px 14px;">${s.date||'—'}</td>
+      <td style="padding:10px 14px;text-align:center;"><span style="background:${stColors[st]}22;color:${stColors[st]};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;font-family:monospace;">${stLabels[st]}</span></td>
+      <td style="padding:10px 14px;text-align:center;">${isPaid?`<button onclick="previewQuittance(${b.id})" class="btn btn-s btn-sm">📄</button>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const totalDu = MONTHS.reduce((s,_,mi)=>s+b.loy,0);
+  const totalEnc = MONTHS.reduce((s,_,mi)=>{const ss=(LD[mi]||{})[b.id]||{};return s+(ss.enc||0);},0);
+  const txPaye = Math.round(totalEnc/totalDu*100);
+
+  document.getElementById('ech-container').innerHTML=`
+    <div style="background:#003F87;color:#fff;border-radius:10px 10px 0 0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:800;font-size:14px;">${b.n} — ${b.l||'Vacant'}</div>
+        <div style="font-size:10px;opacity:.65;font-family:monospace;">${b.a} · ${b.e}</div>
+      </div>
+      <div style="display:flex;gap:20px;align-items:center;">
+        <div style="text-align:right;">
+          <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">Loyer mensuel</div>
+          <div style="font-size:16px;font-weight:700;">${b.loy.toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">Encaissé / Prévu</div>
+          <div style="font-size:16px;font-weight:700;color:#6ee3a5;">${totalEnc.toLocaleString('fr-FR')} € / ${totalDu.toLocaleString('fr-FR')} € (${txPaye}%)</div>
+        </div>
+      </div>
+    </div>
+    <div style="border:1px solid #d0d9ec;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">
+      <table class="ech-table" style="width:100%;border-collapse:collapse;background:#fff;">
+        <thead><tr style="background:#f0f5fc;">
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:left;">Mois</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:right;">Loyer Dû</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:right;">Encaissé</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:right;">Écart</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);">Date Paiement</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:center;">Statut</th>
+          <th style="padding:9px 14px;font-size:10px;font-family:monospace;text-transform:uppercase;color:var(--mu);text-align:center;">Quittance</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="background:#f0f5fc;border-top:2px solid #003F87;">
+            <td style="padding:10px 14px;font-weight:800;color:#003F87;">TOTAL 2025</td>
+            <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:#003F87;">${totalDu.toLocaleString('fr-FR')} €</td>
+            <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:#0f7a45;">${totalEnc.toLocaleString('fr-FR')} €</td>
+            <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:${totalEnc<totalDu?'#c0392b':'#0f7a45'}">${totalEnc<totalDu?'-'+(totalDu-totalEnc).toLocaleString('fr-FR')+' €':'= Complet'}</td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+}
+
+function exportEcheancier(){ toast('💡 Utilisez Ctrl+P (ou Cmd+P) pour imprimer/exporter en PDF'); }
+
+// ── Config bailleur ──────────────────────────────────────────────────
+function saveBailleur(){
+  BAILLEUR = {
+    nom:   document.getElementById('b-nom').value,
+    adr:   document.getElementById('b-adr').value,
+    cp:    document.getElementById('b-cp').value,
+    ville: document.getElementById('b-ville').value,
+    email: document.getElementById('b-email').value,
+    tel:   document.getElementById('b-tel').value,
+  };
+  localStorage.setItem('immo_bailleur', JSON.stringify(BAILLEUR));
+  closeModal('mo-bailleur');
+  buildQuittancesPage();
+  toast('✅ Informations bailleur enregistrées');
+}
+
+function loadEmailConfig(){
+  const cfg = JSON.parse(localStorage.getItem('immo_email_config')||'{}');
+  if(cfg.key)   document.getElementById('resend-key').value    = cfg.key;
+  if(cfg.from)  document.getElementById('resend-from').value   = cfg.from;
+  if(cfg.subject) document.getElementById('resend-subject').value = cfg.subject;
+  if(cfg.body)  document.getElementById('resend-body').value   = cfg.body;
+}
+
+function saveEmailConfig(){
+  EMAIL_CONFIG = {
+    key:     document.getElementById('resend-key').value,
+    from:    document.getElementById('resend-from').value,
+    subject: document.getElementById('resend-subject').value,
+    body:    document.getElementById('resend-body').value,
+  };
+  localStorage.setItem('immo_email_config', JSON.stringify(EMAIL_CONFIG));
+  toast('✅ Configuration email enregistrée');
+}
+
+async function testEmail(){
+  if(!EMAIL_CONFIG.key){ saveEmailConfig(); }
+  if(!EMAIL_CONFIG.key){ toast("Entrez une cle API Resend"); return; }
+  toast('📤 Envoi du test...');
+  try {
+    const resp = await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+EMAIL_CONFIG.key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        from: EMAIL_CONFIG.from||'onboarding@resend.dev',
+        to: [BAILLEUR.email||EMAIL_CONFIG.from],
+        subject: '🧪 Test Dashboard Immobilier',
+        html: '<h2>✅ Configuration email fonctionnelle !</h2><p>Votre dashboard immobilier est prêt à envoyer les quittances.</p>'
+      })
+    });
+    if(resp.ok) toast('✅ Email de test envoyé !');
+    else { const e=await resp.json(); toast('❌ '+(e.message||'Erreur')); }
+  } catch(e){ toast('❌ Erreur : '+e.message); }
+}
+
+// Vérification relances au chargement
+setTimeout(checkRelancesImpayes, 3000);
+
+
+// ─── Fiches bailleurs ────────────────────────────────────────────────
+let _editBailleurKey = null;
+const ENT_COL_MAP = {
+  'Bismuth Jacques':'#003F87','Sophie Bismuth':'#6d28d9',
+  'SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
+  'SCI BOBI Immo':'#c0392b','SCI JML Immo':'#b8860b'
+};
+
+function buildBailleursGrid(){
+  const grid = document.getElementById('bailleurs-grid');
+  if(!grid) return;
+  let html = '';
+  Object.keys(BAILLEURS).forEach(function(key){
+    const b = BAILLEURS[key];
+    const col = ENT_COL_MAP[key]||'#374151';
+    const siretHtml = b.siret ? '<div style="font-size:9px;color:rgba(255,255,255,.55);font-family:monospace;margin-top:2px;">SIRET : '+b.siret+'</div>' : '';
+    const emailHtml = b.email
+      ? '<span style="font-size:10px;background:#d1f0e0;color:#0f7a45;padding:2px 7px;border-radius:10px;font-family:monospace;">&#10003; '+b.email+'</span>'
+      : '<span style="font-size:10px;background:#fce8e6;color:#c0392b;padding:2px 7px;border-radius:10px;font-family:monospace;">&#9888; Email manquant</span>';
+    html += '<div onclick="openEditBailleur(\'' + key + '\')" style="background:#fff;border:1px solid #d0d9ec;border-radius:10px;overflow:hidden;cursor:pointer;">'
+      + '<div style="background:'+col+';padding:10px 14px;">'
+        + '<div style="font-weight:800;font-size:12px;color:#fff;">'+b.nom+'</div>'
+        + siretHtml
+      + '</div>'
+      + '<div style="padding:10px 14px;">'
+        + '<div style="font-size:11px;color:#6272a0;line-height:1.6;">'+b.adr+'<br>'+b.cp+' '+b.ville+'</div>'
+        + '<div style="margin-top:8px;">'+emailHtml+'</div>'
+      + '</div>'
+    + '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+function openEditBailleur(key){
+  _editBailleurKey = key;
+  const b = BAILLEURS[key];
+  const info = document.getElementById('mb-info');
+  if(info) info.innerHTML = `<b>${b.nom}</b><br>${b.adr}, ${b.cp} ${b.ville}${b.siret?'<br>SIRET : '+b.siret:''}`;
+  document.getElementById('mb-email').value = b.email||'';
+  document.getElementById('mb-tel').value   = b.tel||'';
+  openModal('mo-bailleur');
+}
+
+function saveBailleurContact(){
+  if(!_editBailleurKey) return;
+  BAILLEURS[_editBailleurKey].email = document.getElementById('mb-email').value;
+  BAILLEURS[_editBailleurKey].tel   = document.getElementById('mb-tel').value;
+  const saved = JSON.parse(localStorage.getItem('immo_bailleurs')||'{}');
+  saved[_editBailleurKey] = { email: BAILLEURS[_editBailleurKey].email, tel: BAILLEURS[_editBailleurKey].tel };
+  localStorage.setItem('immo_bailleurs', JSON.stringify(saved));
+  closeModal('mo-bailleur');
+  buildBailleursGrid();
+  toast('✅ Coordonnées enregistrées — '+_editBailleurKey);
+}
+
+</script>
+</body>
+</html>
