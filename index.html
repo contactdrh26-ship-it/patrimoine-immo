@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Patrimoine Immobilier — Gestion Mensuelle</title><!-- v1779973455 -->
+<title>Patrimoine Immobilier — Gestion Mensuelle</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -1228,7 +1228,7 @@ function saveLoyers(){
   ls('immo3_l',LD);ls('immo3_h',H);
   updateSidebar();buildMoisBtns();
   if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
-  toast('Loyers enregistres');BIENS.forEach(function(b){if(LD[CUR]&&LD[CUR][b.id])dbSaveLoyer(CUR,b.id,LD[CUR][b.id]);});
+  toast('✅ Loyers de '+MN[CUR]+' enregistrés');
 }
 
 // ══════════════════════════════════
@@ -1722,7 +1722,7 @@ function populateBienSelect(){
 // ══════════════════════════════════
 //  INIT
 // ══════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(syncFromDB,1000);
+document.addEventListener('DOMContentLoaded',()=>{
   populateBienSelect();
   document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
   buildMoisBtns();
@@ -1938,54 +1938,7 @@ const BAILLEURS = {
 const _bSaved = JSON.parse(localStorage.getItem('immo_bailleurs')||'{}');
 Object.keys(BAILLEURS).forEach(k=>{ if(_bSaved[k]){BAILLEURS[k].email=_bSaved[k].email||''; BAILLEURS[k].tel=_bSaved[k].tel||'';} });
 
-
 function getBailleur(b){ return BAILLEURS[b.e] || BAILLEURS['Bismuth Jacques']; }
-
-// ═══ SUPABASE ════════════════════════════════════════════
-var _SBU='https://mighprmsvinoqobpjkfb.supabase.co',_SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pZ2hycG1zdmxucW9icGplZmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODc2MTIsImV4cCI6MjA5NTQ2MzYxMn0.XTFJTVMlh7QMeywZRx9NpoJ7YV8FRx_3vlh3b7zp2ks';
-function _sbh(){return{'apikey':_SBK,'Authorization':'Bearer '+_SBK,'Content-Type':'application/json','Prefer':'return=representation'};}
-async function _sbGet(t){try{var r=await fetch(_SBU+'/rest/v1/'+t+'?select=*',{headers:_sbh()});return r.ok?await r.json():[];}catch(e){return[];}}
-async function _sbUpsert(t,d,c){try{var h=Object.assign({},_sbh(),{'Prefer':'resolution=merge-duplicates,return=minimal','on-conflict':c||''});await fetch(_SBU+'/rest/v1/'+t,{method:'POST',headers:h,body:JSON.stringify(d)});}catch(e){}}
-async function _sbInsert(t,d){try{var r=await fetch(_SBU+'/rest/v1/'+t,{method:'POST',headers:_sbh(),body:JSON.stringify(d)});return r.ok?await r.json():null;}catch(e){return null;}}
-async function _sbDel(t,id){try{await fetch(_SBU+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:_sbh()});}catch(e){}}
-async function syncFromDB(){
-  try{
-    var lo=await _sbGet('loyers'),de=await _sbGet('depenses'),em=await _sbGet('locataire_emails');
-    lo.forEach(function(r){if(!LD[r.mois])LD[r.mois]={};LD[r.mois][r.bien_id]={enc:r.enc,date:r.date_paiement,mode:r.mode,st:r.statut,note:r.note};});
-    de.forEach(function(r){if(!DD[r.mois])DD[r.mois]=[];if(!DD[r.mois].find(function(d){return d._dbid===r.id;}))DD[r.mois].push({_dbid:r.id,cat:r.cat,bien:r.bien,lib:r.lib,mont:r.mont,date:r.date_dep,perio:r.perio,ref:r.ref||'',note:r.note||''});});
-    em.forEach(function(r){LOCATAIRE_EMAILS[r.bien_id]=r.email;});
-    updateSidebar();buildMoisBtns();
-    var pg=document.querySelector('.pg.on');
-    if(pg){var id=pg.id.replace('pg-','');if(id==='annuel')buildAnnuelPage();else if(id==='loyers')buildLoyersPage();}
-    console.log('DB sync OK');
-  }catch(e){console.warn(e);}
-}
-async function dbSaveLoyer(m,bid,d){await _sbUpsert('loyers',{mois:m,bien_id:bid,enc:d.enc||0,date_paiement:d.date||'',mode:d.mode||'Virement',statut:d.st||'att',note:d.note||''},'mois,bien_id');}
-async function dbSaveDep(m,dep){return await _sbInsert('depenses',{mois:m,cat:dep.cat,bien:dep.bien,lib:dep.lib,mont:dep.mont,date_dep:dep.date||'',perio:dep.perio||'Ponctuel',ref:dep.ref||'',note:dep.note||''});}
-async function dbDelDep(id){await _sbDel('depenses',id);}
-async function dbSaveEmail(bid,email){await _sbUpsert('locataire_emails',{bien_id:bid,email:email},'bien_id');}
-
-// ═══ ENVOI QUITTANCE ═════════════════════════════════════
-async function sendQuittanceEmail_EJS(bienId){
-  var b=BIENS.find(function(x){return x.id===bienId;});
-  if(!b)return toast('Bien introuvable');
-  var email=LOCATAIRE_EMAILS[bienId];
-  if(!email)return toast('Email locataire manquant');
-  var BL=getBailleur(b);
-  var s=(LD[CUR]||{})[b.id]||{};
-  var enc=s.enc||b.loy;
-  var mois=MN[CUR];
-  var ref='QUI-2025-'+String(CUR+1).padStart(2,'0')+'-'+String(b.id).padStart(3,'0');
-  var dat=s.date||new Date().toLocaleDateString('fr-FR');
-  var H='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;background:#f0f4fa}.w{max-width:680px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.12)}.h{background:linear-gradient(135deg,#003F87,#1557b0);padding:28px 36px}.h h1{margin:0 0 4px;font-size:22px;font-weight:900;color:#fff}.h p{margin:0;font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase}.rf{float:right;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;color:#fff;margin-top:-34px}.b{padding:24px 36px}.r2{display:table;width:100%;margin-bottom:16px}.c{display:table-cell;width:46%;background:#f5f7fc;border-radius:8px;padding:12px 14px;border-left:3px solid #003F87;vertical-align:top}.cr{border-left-color:#0f7a45}.lb{font-size:10px;color:#6272a0;text-transform:uppercase;margin-bottom:4px}.nm{font-size:14px;font-weight:700;color:#0d1a35}.ad{font-size:12px;color:#6272a0;margin-top:3px;line-height:1.5}.mn{background:linear-gradient(135deg,#003F87,#1557b0);border-radius:8px;padding:16px 20px;margin:14px 0}.ml{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:4px}.mv{font-size:26px;font-weight:900;color:#fff}.ok{display:inline-block;background:rgba(255,255,255,.15);border-radius:5px;padding:2px 10px;font-size:12px;font-weight:700;color:#6ee3a5;margin-left:10px;vertical-align:middle}table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:8px 10px;font-size:12px;border-bottom:1px solid #e8eef7;color:#374151}td:last-child{font-weight:600;text-align:right}.lg{background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;padding:12px;font-size:11px;color:#6272a0;line-height:1.7;font-style:italic;margin:12px 0}.sg{display:table;width:100%;padding-top:12px;border-top:1px solid #e8eef7}.sl{display:table-cell;font-size:12px;color:#6272a0}.sr{display:table-cell;text-align:right}.sn{font-size:14px;font-weight:700;color:#003F87}.sq{font-size:11px;color:#6272a0}.ft{background:#f0f5fc;padding:10px 36px;font-size:10px;color:#6272a0}.ht{text-align:center;padding:10px;font-size:11px;color:#6272a0;font-style:italic}</style></head><body><div class="w"><div class="h"><div class="rf">'+ref+'</div><h1>Quittance de Loyer</h1><p>'+mois+' 2025 &middot; '+dat+'</p></div><div class="b"><div class="r2"><div class="c"><div class="lb">Bailleur</div><div class="nm">'+BL.nom+'</div><div class="ad">'+BL.adr+'<br>'+BL.cp+' '+BL.ville+(BL.siret?'<br>SIRET : '+BL.siret:'')+'</div></div><div style="display:table-cell;width:8%"></div><div class="c cr"><div class="lb">Locataire</div><div class="nm">'+(b.l||b.n)+'</div><div class="ad">'+b.a+'</div></div></div><div class="mn"><div class="ml">Loyer+charges &mdash; '+mois+' 2025</div><div class="mv">'+enc.toLocaleString('fr-FR')+' &euro;<span class="ok">&#10003; Pay&eacute;</span></div></div><table><tr><td>Bailleur</td><td>'+BL.nom+(BL.siret?' SIRET '+BL.siret:'')+'</td></tr><tr><td>Bien</td><td>'+b.n+'</td></tr><tr><td>Adresse</td><td>'+b.a+'</td></tr><tr><td>Loyer HC</td><td>'+(enc-b.chg).toLocaleString('fr-FR')+' &euro;</td></tr><tr><td>Charges</td><td>'+b.chg.toLocaleString('fr-FR')+' &euro;</td></tr><tr><td><strong>Total</strong></td><td><strong>'+enc.toLocaleString('fr-FR')+' &euro;</strong></td></tr><tr><td>P&eacute;riode</td><td>1er-30/31 '+mois+' 2025</td></tr><tr><td>Date</td><td>'+dat+'</td></tr><tr><td>Mode</td><td>'+(s.mode||'Virement')+'</td></tr></table><div class="lg">La pr&eacute;sente quittance annule tous les re&ccedil;us pr&eacute;c&eacute;dents. D&eacute;livr&eacute;e conform&eacute;ment aux articles 7-1 de la loi n&deg; 89-462 du 6 juillet 1989.</div><div class="sg"><div class="sl">Fait le '+new Date().toLocaleDateString('fr-FR')+'<br>'+BL.ville+'</div><div class="sr"><div class="sn">'+BL.nom+'</div><div class="sq">Propri&eacute;taire/Bailleur</div></div></div></div><div class="ft">R&eacute;f. '+ref+' &middot; '+BL.nom+'</div><div class="ht">PDF: Fichier &rarr; Imprimer &rarr; Enregistrer en PDF</div></div></body></html>';
-  toast('Envoi en cours...');
-  try{
-    var res=await fetch('/.netlify/functions/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:email,nom:b.l||b.n,mois:mois,annee:'2025',bailleur:BL.nom,bien:b.n,adresse:b.a,loyer:enc.toLocaleString('fr-FR')+' EUR',html:H})});
-    var data=await res.json();
-    if(res.ok&&data.success)toast('Quittance envoyee a '+email);
-    else toast('Erreur: '+(data.error||'Verifiez config'));
-  }catch(e){toast('Erreur: '+e.message);}
-}
 
 let BAILLEUR = BAILLEURS['Bismuth Jacques'];
 let EMAIL_CONFIG = JSON.parse(localStorage.getItem('immo_email_config') || 'null') || {
@@ -2055,7 +2008,7 @@ function buildQuittancesPage(){
         <td style="padding:10px 14px;text-align:right;font-family:monospace;font-size:13px;font-weight:700;color:${s.enc?'#0f7a45':'#6272a0'}">${s.enc>0?s.enc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td style="padding:10px 14px;">
           <input type="email" value="${email}" placeholder="email@locataire.com"
-            onchange="LOCATAIRE_EMAILS[${b.id}]=this.value;localStorage.setItem('immo_loc_emails',JSON.stringify(LOCATAIRE_EMAILS));dbSaveEmail(${b.id},this.value)"
+            onchange="LOCATAIRE_EMAILS[${b.id}]=this.value;localStorage.setItem('immo_loc_emails',JSON.stringify(LOCATAIRE_EMAILS))"
             style="border:1px solid var(--brd);border-radius:5px;padding:5px 9px;font-size:11px;background:var(--bg);outline:none;width:180px;">
         </td>
         <td style="padding:10px 14px;text-align:center;">
@@ -2064,7 +2017,7 @@ function buildQuittancesPage(){
         <td style="padding:10px 14px;text-align:center;">
           <div style="display:flex;gap:5px;justify-content:center;">
             <button onclick="previewQuittance(${b.id})" class="btn btn-s btn-sm" ${isEnc?'':'disabled'} style="${isEnc?'':'opacity:.4;cursor:not-allowed'}">👁️ Voir</button>
-            <button onclick="sendQuittanceEmail_EJS(${b.id})" class="btn btn-sm" style="background:${isEnc?'#0f7a45':'#ccc'};color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;cursor:${isEnc?'pointer':'not-allowed'}">✉️</button>
+            <button onclick="sendSingleQuittance(${b.id})" class="btn btn-sm" style="background:${isEnc?'#0f7a45':'#ccc'};color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;cursor:${isEnc?'pointer':'not-allowed'}">✉️</button>
           </div>
         </td>
       </tr>`;
