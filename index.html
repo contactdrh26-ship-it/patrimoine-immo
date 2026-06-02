@@ -2212,6 +2212,47 @@ function printQuittance(){
   function downloadPDF(){
   if(!curPreviewBien){toast('⚠️ Aucune quittance');return;}
   const b=curPreviewBien;
+  toast('📄 Génération du PDF...');
+  // On reconstruit un document autonome avec styles intégrés (comme l'impression)
+  const wrap=document.createElement('div');
+  wrap.style.cssText='width:794px;background:#fff;font-family:Arial,sans-serif;';
+  wrap.innerHTML=`
+    <style>
+      .quitance-preview{width:794px;background:#fff;}
+      .q-header{background:#003F87;padding:28px 36px 22px;position:relative;color:#fff;}
+      .q-header h2{font-size:24px;font-weight:800;color:#fff;margin:0 0 4px;}
+      .q-header .q-sub{font-size:11px;color:#cdd9ee;letter-spacing:.06em;text-transform:uppercase;}
+      .q-header .q-ref{position:absolute;top:20px;right:36px;background:#1557b0;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;}
+      .q-body{padding:28px 36px;}
+      .q-parties{display:flex;gap:24px;margin-bottom:24px;}
+      .q-party-box{flex:1;background:#f5f7fc;border-radius:8px;padding:14px 16px;border-left:3px solid #003F87;}
+      .q-party-box.right{border-left-color:#0f7a45;}
+      .q-party-label{font-size:10px;color:#6272a0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+      .q-party-name{font-size:15px;font-weight:700;color:#0d1a35;}
+      .q-party-addr{font-size:12px;color:#6272a0;margin-top:3px;line-height:1.5;}
+      .q-montant-box{background:#003F87;border-radius:10px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;color:#fff;}
+      .qm-label{font-size:11px;color:#cdd9ee;text-transform:uppercase;letter-spacing:.06em;}
+      .qm-val{font-size:28px;font-weight:900;color:#fff;}
+      .qm-lettres{font-size:12px;color:#dde6f5;margin-top:2px;font-style:italic;}
+      .q-details-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+      .q-details-table td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e8eef7;color:#0d1a35;}
+      .q-details-table td:first-child{color:#6272a0;width:40%;}
+      .q-details-table td:last-child{font-weight:600;text-align:right;}
+      .q-legal{background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;padding:12px 16px;font-size:11px;color:#6272a0;line-height:1.7;font-style:italic;margin-bottom:20px;}
+      .q-signature{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e8eef7;}
+      .q-sig-right{text-align:right;}
+      .qs-name{font-weight:700;font-size:14px;color:#003F87;}
+      .qs-qual{font-size:11px;color:#6272a0;}
+      .q-footer{background:#f0f5fc;padding:12px 36px;display:flex;justify-content:space-between;}
+      .qf-txt{font-size:10px;color:#6272a0;}
+    </style>
+    ${genQuittanceHTML(b)}`;
+  document.body.appendChild(wrap);
+  const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+  html2pdf().set(opt).from(wrap).save().then(()=>{document.body.removeChild(wrap);});
+}(){
+  if(!curPreviewBien){toast('⚠️ Aucune quittance');return;}
+  const b=curPreviewBien;
   const source=document.getElementById('quittance-print-'+b.id);
   if(!source){toast('⚠️ Ouvrez l\'aperçu (Voir) d\'abord');return;}
   toast('📄 Génération du PDF...');
