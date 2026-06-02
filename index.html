@@ -2249,17 +2249,8 @@ function printQuittance(){
     ${genQuittanceHTML(b)}`;
   document.body.appendChild(wrap);
   const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-  html2pdf().set(opt).from(wrap).save().then(()=>{document.body.removeChild(wrap);});
-}(){
-  if(!curPreviewBien){toast('⚠️ Aucune quittance');return;}
-  const b=curPreviewBien;
-  const source=document.getElementById('quittance-print-'+b.id);
-  if(!source){toast('⚠️ Ouvrez l\'aperçu (Voir) d\'abord');return;}
-  toast('📄 Génération du PDF...');
-  const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
-  html2pdf().set(opt).from(source).save();
+    html2pdf().set(opt).from(wrap).save().then(()=>{document.body.removeChild(wrap);});
 }
-
 // ── Envoi email via Resend ───────────────────────────────────────────
 async function sendSingleQuittance(bienId){
   const b = BIENS.find(x=>x.id===bienId);
