@@ -599,11 +599,11 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
   ════════════════════════════ -->
   <div class="pg" id="pg-biens">
     <div class="st"><span>🏘️ Mes Biens Locatifs (44 unités)</span>
-      <button class="btn btn-p btn-sm" onclick="openModal('mo-bien')">+ Ajouter</button>
+      <button class="btn btn-p btn-sm" onclick="openAddBien()">+ Ajouter</button>
     </div>
     <div class="tw">
       <table>
-        <thead><tr><th>Bien / Locataire</th><th>Adresse</th><th>Entité</th><th>Type</th><th>Loyer</th><th>Crédit</th><th>Charges</th><th>Net/mois</th><th>Statut</th></tr></thead>
+        <thead><tr><th>Bien / Locataire</th><th>Adresse</th><th>Entité</th><th>Type</th><th>Loyer</th><th>Crédit</th><th>Charges</th><th>Net/mois</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody id="biens-tb"></tbody>
       </table>
     </div>
@@ -898,6 +898,14 @@ let BIENS=[
   {id:40,n:"Josi 2e Étage",         a:"PSB Pasteur",                        e:"SCI SJ Immo",    l:"Josi",        loy:800,  crd:2670, chg:100},
   {id:44,n:"Rue des Pyrénées",      a:"Rue des Pyrénées",                   e:"SCI JML Immo",   l:"Sub Gambetta",loy:4500, crd:4115, chg:0},
 ];
+  // Charger les biens sauvegardés depuis le navigateur (sinon garder la liste ci-dessus)
+const _biensSaved = localStorage.getItem('immo_biens');
+if(_biensSaved){
+  try{ BIENS = JSON.parse(_biensSaved); }catch(e){}
+}
+function saveBiens(){
+  localStorage.setItem('immo_biens', JSON.stringify(BIENS));
+}
 
 // Storage — toutes les données indexées par mois (0–11)
 let LD=JSON.parse(localStorage.getItem('immo3_l')||'{}');  // loyers: {mois:{bienId:{enc,date,mode,st,note}}}
@@ -1672,12 +1680,64 @@ function buildBiensTable(){
       <td class="${b.chg>0?'neu':''}">${b.chg>0?fmt(b.chg):'—'}</td>
       <td class="${net<0?'neg':net<100?'neu':'pos'}">${net>0?'+':''}${net} €</td>
       <td><span class="bd ${net<0?'br':net<100?'bo':'bg'}">${net<0?'⚠ Déficit':net<100?'Faible':'Rentable'}</span></td>
+      <td style="text-align:center"><button class="btn btn-s btn-sm" onclick="openEditBien(${b.id})">✏️</button></td>
+    </tr>`;
     </tr>`;
   }).join('');
 }
 
+  let _editBienId = null;
+
+  function openAddBien(){
+  _editBienId = null;
+  ['nb-n','nb-a','nb-l','nb-loy','nb-crd','nb-chg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const titre = document.querySelector('#mo-bien .mo-title');
+  if(titre) titre.childNodes[0].textContent = '🏠 Ajouter un Bien ';
+  openModal('mo-bien');
+}
+function openEditBien(id){
+  const b = BIENS.find(x=>x.id===id);
+  if(!b) return;
+  _editBienId = id;
+  document.getElementById('nb-n').value   = b.n||'';
+  document.getElementById('nb-a').value   = b.a||'';
+  document.getElementById('nb-e').value   = b.e||'';
+  document.getElementById('nb-t').value   = b.t||'';
+  document.getElementById('nb-l').value   = b.l||'';
+  document.getElementById('nb-loy').value = b.loy||0;
+  document.getElementById('nb-crd').value = b.crd||0;
+  document.getElementById('nb-chg').value = b.chg||0;
+  // Changer le titre et le bouton du modal en mode "modification"
+  const titre = document.querySelector('#mo-bien .mo-title');
+  if(titre) titre.childNodes[0].textContent = '✏️ Modifier le bien ';
+  openModal('mo-bien');
+}
+
 function addBien(){
+  if(_editBienId !== null){
+    // Mode modification
+    const b = BIENS.find(x=>x.id===_editBienId);
+    if(b){
+      b.n   = v('nb-n')||'Nouveau';
+      b.a   = v('nb-a');
+      b.e   = v('nb-e');
+      b.t   = v('nb-t');
+      b.l   = v('nb-l');
+      b.loy = pf('nb-loy');
+      b.crd = pf('nb-crd');
+      b.chg = pf('nb-chg');
+    }
+    _editBienId = null;
+    saveBiens();
+    populateBienSelect();
+    closeModal('mo-bien');
+    buildBiensTable();
+    toast('✅ Bien modifié');
+    return;
+  }
+  // Mode ajout (comportement d'origine)
   BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg')});
+  saveBiens();
   populateBienSelect();closeModal('mo-bien');buildBiensTable();toast('✅ Bien ajouté');
 }
 
