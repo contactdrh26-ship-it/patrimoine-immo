@@ -6,6 +6,7 @@
 <title>Patrimoine Immobilier — Gestion Mensuelle</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root{
   --bl:#003F87;--bl2:#1557b0;--bl3:#3b82d4;--bl4:#dce8f8;--bl5:#f0f5fc;
@@ -728,6 +729,7 @@ Cordialement,
         <div style="font-size:13px;font-weight:700;color:var(--bl);">👁️ Aperçu de la quittance</div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-s btn-sm" onclick="printQuittance()">🖨️ Imprimer / PDF</button>
+          <button class="btn btn-s btn-sm" onclick="downloadPDF()">⬇️ Télécharger PDF</button>
           <button class="btn btn-sm" style="background:#0f7a45;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="sendQuittanceEmail()">✉️ Envoyer par email</button>
           <button class="btn btn-s btn-sm" onclick="document.getElementById('q-preview-container').style.display='none'">✕ Fermer</button>
         </div>
@@ -2206,6 +2208,15 @@ function printQuittance(){
     </head><body>${html}</body></html>`);
   w.document.close();
   setTimeout(()=>w.print(),500);
+}
+  function downloadPDF(){
+  if(!curPreviewBien){toast('⚠️ Aucune quittance');return;}
+  const b=curPreviewBien;
+  const source=document.getElementById('quittance-print-'+b.id);
+  if(!source){toast('⚠️ Ouvrez l\'aperçu (Voir) d\'abord');return;}
+  toast('📄 Génération du PDF...');
+  const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+  html2pdf().set(opt).from(source).save();
 }
 
 // ── Envoi email via Resend ───────────────────────────────────────────
