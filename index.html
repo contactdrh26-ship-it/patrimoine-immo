@@ -906,12 +906,20 @@ let BIENS=[
   {id:44,n:"Rue des Pyrénées",      a:"Rue des Pyrénées",                   e:"SCI JML Immo",   l:"Sub Gambetta",loy:4500, crd:4115, chg:0},
 ];
   // Charger les biens sauvegardés depuis le navigateur (sinon garder la liste ci-dessus)
-const _biensSaved = localStorage.getItem('immo_biens');
-if(_biensSaved){
-  try{ BIENS = JSON.parse(_biensSaved); }catch(e){}
+async function chargerBiens(){
+  const { data, error } = await sb.from('biens').select('*').order('id');
+  if(error){ console.log('Erreur chargement biens:', error); return; }
+  if(data && data.length){
+    BIENS = data;
+    if(document.getElementById('pg-biens')?.classList.contains('on')) buildBiensTable();
+  }
 }
-function saveBiens(){
-  localStorage.setItem('immo_biens', JSON.stringify(BIENS));
+chargerBiens();
+async function saveBiens(){
+  const { error } = await sb.from('biens').upsert(
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg}))
+  );
+  if(error){ toast('❌ Erreur sauvegarde'); console.log(error); }
 }
   // === FONCTION TEMPORAIRE — à utiliser une seule fois pour remplir Supabase ===
 async function envoyerBiensVersSupabase(){
