@@ -949,6 +949,20 @@ let LD=JSON.parse(localStorage.getItem('immo3_l')||'{}');  // loyers: {mois:{bie
 }
 chargerLoyers();
 let DD=JSON.parse(localStorage.getItem('immo3_d')||'{}');  // dépenses: {mois:[{...}]}
+  async function chargerDepenses(){
+  const { data, error } = await sb.from('depenses').select('*');
+  if(error){ console.log('Erreur depenses:', error); return; }
+  DD = {};
+  if(data){
+    data.forEach(r=>{
+      if(!DD[r.mois]) DD[r.mois] = [];
+      DD[r.mois].push({ _id:r.id, cat:r.cat, bien:r.bien, lib:r.lib, mont:r.mont, date:r.date||'', perio:r.perio||'', ref:r.ref||'', note:r.note||'' });
+    });
+  }
+  if(document.getElementById('pg-depenses')?.classList.contains('on')) buildDepPage();
+  updateSidebar();
+}
+chargerDepenses();
 let H=JSON.parse(localStorage.getItem('immo3_h')||'[]');   // historique
 
 let CUR=new Date().getMonth(); // mois courant
@@ -1315,7 +1329,15 @@ function refreshDepStats(){
   set('dep-tf-v',fmt(tf));set('dep-eau-v',fmt(eau));set('dep-tra-v',fmt(tra));
 }
 
-function addDep(){
+async function syncDepenses(){
+  await sb.from('depenses').delete().eq('mois', CUR);
+  if(DD[CUR] && DD[CUR].length){
+    const lignes = DD[CUR].map(d=>({mois:CUR, cat:d.cat, bien:d.bien, lib:d.lib, mont:d.mont, date:d.date||'', perio:d.perio||'', ref:d.ref||'', note:d.note||''}));
+    const { error } = await sb.from('depenses').insert(lignes);
+    if(error) console.log('Erreur sync depenses:', error);
+  }
+ }
+  function addDep(){
   const mont=parseFloat(document.getElementById('d-mont').value)||0;
   if(mont<=0){toast('⚠️ Montant requis');return;}
   const dep={
@@ -1330,6 +1352,7 @@ function addDep(){
   if(!DD[CUR])DD[CUR]=[];
   DD[CUR].push(dep);
   ls('immo3_d',DD);
+    syncDepenses();
   H.push({tp:'d',m:CUR,...dep});ls('immo3_h',H);
   resetDep();buildDepPage();updateSidebar();
   if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
@@ -1364,6 +1387,7 @@ function delDep(i){
   const realIdx=allDeps.indexOf(target);
   if(realIdx>=0)allDeps.splice(realIdx,1);
   DD[CUR]=allDeps;ls('immo3_d',DD);
+  syncDepenses();
   buildDepPage();updateSidebar();toast('🗑 Dépense supprimée');
 }
 
@@ -1387,6 +1411,7 @@ function saveTF(){
     }
   });
   ls('immo3_d',DD);ls('immo3_h',H);
+  syncDepenses();
   buildDepPage();updateSidebar();
   toast(`✅ ${added} taxe(s) foncière(s) enregistrée(s) en dépense`);
 }
