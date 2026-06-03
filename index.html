@@ -913,6 +913,15 @@ if(_biensSaved){
 function saveBiens(){
   localStorage.setItem('immo_biens', JSON.stringify(BIENS));
 }
+  // === FONCTION TEMPORAIRE — à utiliser une seule fois pour remplir Supabase ===
+async function envoyerBiensVersSupabase(){
+  toast('📤 Envoi des biens vers Supabase...');
+  const { error } = await sb.from('biens').upsert(
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg}))
+  );
+  if(error){ toast('❌ Erreur : '+error.message); console.log('Erreur Supabase:', error); }
+  else { toast('✅ '+BIENS.length+' biens envoyés vers Supabase !'); }
+}
 
 // Storage — toutes les données indexées par mois (0–11)
 let LD=JSON.parse(localStorage.getItem('immo3_l')||'{}');  // loyers: {mois:{bienId:{enc,date,mode,st,note}}}
