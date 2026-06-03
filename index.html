@@ -933,6 +933,21 @@ async function envoyerBiensVersSupabase(){
 
 // Storage — toutes les données indexées par mois (0–11)
 let LD=JSON.parse(localStorage.getItem('immo3_l')||'{}');  // loyers: {mois:{bienId:{enc,date,mode,st,note}}}
+  async function chargerLoyers(){
+  const { data, error } = await sb.from('loyers').select('*');
+  if(error){ console.log('Erreur loyers:', error); return; }
+  LD = {};
+  if(data){
+    data.forEach(r=>{
+      if(!LD[r.mois]) LD[r.mois] = {};
+      LD[r.mois][r.bien_id] = { enc:r.enc, date:r.date_paiement||'', mode:r.mode||'Virement', st:r.statut||'att', note:r.note||'' };
+    });
+  }
+  buildMoisBtns();
+  updateSidebar();
+  refreshCurrentPage();
+}
+chargerLoyers();
 let DD=JSON.parse(localStorage.getItem('immo3_d')||'{}');  // dépenses: {mois:[{...}]}
 let H=JSON.parse(localStorage.getItem('immo3_h')||'[]');   // historique
 
@@ -1260,6 +1275,16 @@ function saveLoyers(){
     if(ei>=0)H[ei]=entry;else H.push(entry);
   });
   ls('immo3_l',LD);ls('immo3_h',H);
+  const lignesSupabase = BIENS.map(b=>({
+    mois: CUR, bien_id: b.id,
+    enc: LD[CUR][b.id].enc, date_paiement: LD[CUR][b.id].date,
+    mode: LD[CUR][b.id].mode, statut: LD[CUR][b.id].st, note: LD[CUR][b.id].note
+  }));
+  sb.from('loyers').delete().eq('mois', CUR).then(()=>{
+    sb.from('loyers').insert(lignesSupabase).then(({error})=>{
+      if(error) console.log('Erreur save loyers:', error);
+    });
+  });
   updateSidebar();buildMoisBtns();
   if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
   toast('✅ Loyers de '+MN[CUR]+' enregistrés');
