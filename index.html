@@ -1332,7 +1332,7 @@ function refreshDepStats(){
 async function syncDepenses(){
   await sb.from('depenses').delete().eq('mois', CUR);
   if(DD[CUR] && DD[CUR].length){
-    const lignes = DD[CUR].map(d=>({mois:CUR, cat:d.cat, bien:d.bien, lib:d.lib, mont:d.mont, date:d.date||'', perio:d.perio||'', ref:d.ref||'', note:d.note||''}));
+    const lignes = DD[CUR].map(d=>({mois:CUR, cat:d.cat, bien:d.bien, lib:d.lib, mont:d.mont,date_dep:d.date||'', perio:d.perio||'', ref:d.ref||'', note:d.note||''}));
     const { error } = await sb.from('depenses').insert(lignes);
     if(error) console.log('Erreur sync depenses:', error);
   }
