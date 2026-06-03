@@ -1980,10 +1980,21 @@ function updateCredit(id, field, val) {
   if (c) c[field] = val;
 }
 
-function saveAllCredits() {
-  localStorage.setItem('immo_credits', JSON.stringify(CREDITS_DATA));
-  toast('✅ Crédits enregistrés');
+async function saveAllCredits() {
+  const { error } = await sb.from('credits').upsert(
+    CREDITS_DATA.map(c=>({id:c.id, bien_id:c.bienId, banque:c.banque||'', mens:c.mens||0, cap:c.cap, fin:c.fin||'', note:c.note||''}))
+  );
+  if(error){ toast('❌ Erreur crédits'); console.log(error); }
+  else toast('✅ Crédits enregistrés');
 }
+async function chargerCredits(){
+  const { data, error } = await sb.from('credits').select('*').order('id');
+  if(!error && data && data.length){
+    CREDITS_DATA = data.map(c=>({id:c.id, bienId:c.bien_id, banque:c.banque, mens:c.mens, cap:c.cap, fin:c.fin, note:c.note}));
+    if(document.getElementById('pg-credits')?.classList.contains('on')) buildCreditsPage();
+  }
+}
+chargerCredits();
 
 function saveCredit() {
   const bienId = parseInt(document.getElementById('cr-bien').value);
@@ -2033,6 +2044,11 @@ let EMAIL_CONFIG = JSON.parse(localStorage.getItem('immo_email_config') || 'null
   body:'Bonjour,\n\nVeuillez trouver ci-joint votre quittance de loyer pour {mois} {annee}.\n\nCordialement,\n{bailleur}'
 };
 let LOCATAIRE_EMAILS = JSON.parse(localStorage.getItem('immo_loc_emails') || '{}');
+  async function chargerEmails(){
+  const { data } = await sb.from('locataire_emails').select('*');
+  if(data){ data.forEach(r=>{ LOCATAIRE_EMAILS[r.bien_id]=r.email; }); }
+}
+chargerEmails();
 let curPreviewBien = null;
 
 // ── Tabs quittances ──
@@ -2093,7 +2109,7 @@ function buildQuittancesPage(){
         <td style="padding:10px 14px;text-align:right;font-family:monospace;font-size:13px;font-weight:700;color:${s.enc?'#0f7a45':'#6272a0'}">${s.enc>0?s.enc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td style="padding:10px 14px;">
           <input type="email" value="${email}" placeholder="email@locataire.com"
-            onchange="LOCATAIRE_EMAILS[${b.id}]=this.value;localStorage.setItem('immo_loc_emails',JSON.stringify(LOCATAIRE_EMAILS))"
+            onchange="LOCATAIRE_EMAILS[${b.id}]=this.value;sb.from('locataire_emails').upsert({bien_id:${b.id},email:this.value}).then(()=>{})"
             style="border:1px solid var(--brd);border-radius:5px;padding:5px 9px;font-size:11px;background:var(--bg);outline:none;width:180px;">
         </td>
         <td style="padding:10px 14px;text-align:center;">
@@ -2521,6 +2537,7 @@ function saveEmailConfig(){
     body:    document.getElementById('resend-body').value,
   };
   localStorage.setItem('immo_email_config', JSON.stringify(EMAIL_CONFIG));
+  sb.from('config_email').upsert({id:1, cle_api:EMAIL_CONFIG.key||'', expediteur:EMAIL_CONFIG.from||'', sujet:EMAIL_CONFIG.subject||'', corps:EMAIL_CONFIG.body||''}).then(()=>{});
   toast('✅ Configuration email enregistrée');
 }
 
@@ -2600,6 +2617,7 @@ function saveBailleurContact(){
   const saved = JSON.parse(localStorage.getItem('immo_bailleurs')||'{}');
   saved[_editBailleurKey] = { email: BAILLEURS[_editBailleurKey].email, tel: BAILLEURS[_editBailleurKey].tel };
   localStorage.setItem('immo_bailleurs', JSON.stringify(saved));
+  sb.from('bailleurs').upsert({cle:_editBailleurKey, nom:BAILLEURS[_editBailleurKey].nom, siret:BAILLEURS[_editBailleurKey].siret||'', adr:BAILLEURS[_editBailleurKey].adr||'', cp:BAILLEURS[_editBailleurKey].cp||'', ville:BAILLEURS[_editBailleurKey].ville||'', email:BAILLEURS[_editBailleurKey].email||'', tel:BAILLEURS[_editBailleurKey].tel||''}).then(()=>{});
   closeModal('mo-bailleur');
   buildBailleursGrid();
   toast('✅ Coordonnées enregistrées — '+_editBailleurKey);
