@@ -1920,7 +1920,6 @@ function buildCreditsPage() {
   CREDIT_ENTITES.forEach(entNom => {
     const bienIds = BIENS.filter(b => b.e === entNom).map(b => b.id);
     const créditsEnt = CREDITS_DATA.filter(c => bienIds.includes(c.bienId));
-    if (!créditsEnt.length) return;
 
     const entTotalMens = créditsEnt.reduce((s,c) => s + (c.mens||0), 0);
     const entTotalCap  = créditsEnt.filter(c=>c.cap).reduce((s,c) => s + (c.cap||0), 0);
@@ -1965,32 +1964,37 @@ function buildCreditsPage() {
           </tr>
         </thead>
         <tbody>
-          ${créditsEnt.map(c => {
-            const bien = BIENS.find(b => b.id === c.bienId) || {};
+           ${BIENS.filter(b => b.e === entNom).map(b => {
+            const c = CREDITS_DATA.find(cr => cr.bienId === b.id) || {bienId:b.id, mens:0, cap:null, banque:'', fin:'', note:''};
+            const aCredit = CREDITS_DATA.some(cr => cr.bienId === b.id);
             const moisRestants = c.fin ? Math.max(0, Math.round((new Date(c.fin) - new Date()) / (1000*60*60*24*30))) : null;
             const finAlert = moisRestants !== null && moisRestants < 24;
-            return `<tr>
-              <td><b style="font-size:12px">${bien.n || '—'}</b><br><small style="color:var(--mu);font-size:10px">${bien.l || ''} · ${bien.a || ''}</small></td>
+            return `<tr${aCredit ? '' : ' style="opacity:.85"'}>
+              <td><b style="font-size:12px">${b.n || '—'}</b><br><small style="color:var(--mu);font-size:10px">${b.l || ''} · ${b.a || ''}</small></td>
               <td style="text-align:left">
                 <input type="text" value="${c.banque||''}" placeholder="Banque…"
-                  onchange="updateCredit(${c.id},'banque',this.value)"
+                  onchange="updateCredit(${b.id},'banque',this.value)"
                   style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;background:var(--bg);outline:none;width:130px;">
               </td>
-              <td style="text-align:right;font-family:monospace;font-weight:700;color:#c0392b">${fmt(c.mens)}</td>
+              <td style="text-align:right;font-family:monospace;font-weight:700;color:#c0392b">
+                <input type="number" value="${c.mens||''}" placeholder="0"
+                  onchange="updateCredit(${b.id},'mens',parseFloat(this.value)||0)"
+                  style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;font-family:monospace;font-weight:700;color:#c0392b;background:var(--bg);outline:none;width:90px;text-align:right;">
+              </td>
               <td style="text-align:right">
                 <input type="number" value="${c.cap||''}" placeholder="0"
-                  onchange="updateCredit(${c.id},'cap',parseFloat(this.value)||null)"
+                  onchange="updateCredit(${b.id},'cap',parseFloat(this.value)||null)"
                   style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;font-family:monospace;background:var(--bg);outline:none;width:130px;text-align:right;">
               </td>
               <td style="text-align:right">
                 <input type="date" value="${c.fin||''}"
-                  onchange="updateCredit(${c.id},'fin',this.value)"
+                  onchange="updateCredit(${b.id},'fin',this.value)"
                   style="border:1px solid ${finAlert?'#c0392b':'var(--brd)'};border-radius:5px;padding:4px 8px;font-size:12px;background:${finAlert?'#fce8e6':'var(--bg)'};outline:none;">
                 ${moisRestants !== null ? `<div style="font-size:10px;font-family:monospace;color:${finAlert?'#c0392b':'var(--mu)'};">${moisRestants} mois restants</div>` : ''}
               </td>
               <td style="text-align:left">
                 <input type="text" value="${c.note||''}" placeholder="Note…"
-                  onchange="updateCredit(${c.id},'note',this.value)"
+                  onchange="updateCredit(${b.id},'note',this.value)"
                   style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;background:var(--bg);outline:none;width:140px;">
               </td>
               <td style="text-align:center">
@@ -2025,9 +2029,16 @@ function buildCreditsPage() {
   }
 }
 
-function updateCredit(id, field, val) {
-  const c = CREDITS_DATA.find(c => c.id === id);
-  if (c) c[field] = val;
+function updateCredit(bienId, field, val) {
+  let c = CREDITS_DATA.find(cr => cr.bienId === bienId);
+  if (!c) {
+    const newId = CREDITS_DATA.length > 0 ? Math.max(...CREDITS_DATA.map(cr => cr.id)) + 1 : 1;
+    c = { id: newId, bienId: bienId, banque: '', mens: 0, cap: null, fin: '', note: '' };
+    CREDITS_DATA.push(c);
+  }
+  c[field] = val;
+  saveAllCredits();
+  buildCreditsPage();
 }
 
 async function saveAllCredits() {
