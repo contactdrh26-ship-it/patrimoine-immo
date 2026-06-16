@@ -1904,9 +1904,8 @@ const CREDIT_ENTITES = [
   'SCI JML Immo',
   'SCI BOBI Immo',
 ];
-
 function buildCreditsPage() {
-  // KPIs
+  // KPIs (basés sur les vrais crédits uniquement)
   const totalMens = CREDITS_DATA.reduce((s,c) => s + (c.mens||0), 0);
   const totalCap  = CREDITS_DATA.filter(c => c.cap).reduce((s,c) => s + (c.cap||0), 0);
   set('cred-kpi-mens', fmt(totalMens));
@@ -1916,27 +1915,27 @@ function buildCreditsPage() {
   const container = document.getElementById('cred-table-container');
   container.innerHTML = '';
 
-  // Regrouper par entité
-  CREDIT_ENTITES.forEach(entNom => {
-    const bienIds = BIENS.filter(b => b.e === entNom).map(b => b.id);
-    const créditsEnt = CREDITS_DATA.filter(c => bienIds.includes(c.bienId));
+  const entColors = {
+    'Bismuth Jacques':'#003F87','SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
+    'Sophie Bismuth':'#6d28d9','SCI JML Immo':'#b8860b','SCI BOBI Immo':'#c0392b',
+  };
 
+  CREDIT_ENTITES.forEach(entNom => {
+    const biensEnt = BIENS.filter(b => b.e === entNom);
+    if (!biensEnt.length) return;
+
+    const bienIds = biensEnt.map(b => b.id);
+    const créditsEnt = CREDITS_DATA.filter(c => bienIds.includes(c.bienId));
     const entTotalMens = créditsEnt.reduce((s,c) => s + (c.mens||0), 0);
     const entTotalCap  = créditsEnt.filter(c=>c.cap).reduce((s,c) => s + (c.cap||0), 0);
-
-    const entColors = {
-      'Bismuth Jacques':'#003F87','SCI SJ Immo':'#005f9e','SCI VB Immo':'#1a5cad',
-      'Sophie Bismuth':'#6d28d9','SCI JML Immo':'#b8860b','SCI BOBI Immo':'#c0392b',
-    };
     const col = entColors[entNom] || '#374151';
 
-    // Header entité
     const hdr = document.createElement('div');
     hdr.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:${col};color:#fff;border-radius:10px;padding:11px 18px;margin-bottom:8px;margin-top:16px;`;
     hdr.innerHTML = `
       <div>
         <div style="font-weight:800;font-size:14px;">🏢 ${entNom}</div>
-        <div style="font-size:10px;opacity:.65;font-family:monospace;">${créditsEnt.length} crédit(s) · Mensualités : ${fmt(entTotalMens)}</div>
+        <div style="font-size:10px;opacity:.65;font-family:monospace;">${biensEnt.length} bien(s) · ${créditsEnt.length} crédit(s) · Mensualités : ${fmt(entTotalMens)}</div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:9px;opacity:.6;font-family:monospace;text-transform:uppercase;">Capital Restant</div>
@@ -1946,7 +1945,6 @@ function buildCreditsPage() {
       </div>`;
     container.appendChild(hdr);
 
-    // Table
     const wrap = document.createElement('div');
     wrap.className = 'tw';
     wrap.style.marginBottom = '6px';
@@ -1964,19 +1962,19 @@ function buildCreditsPage() {
           </tr>
         </thead>
         <tbody>
-           ${BIENS.filter(b => b.e === entNom).map(b => {
+          ${biensEnt.map(b => {
             const c = CREDITS_DATA.find(cr => cr.bienId === b.id) || {bienId:b.id, mens:0, cap:null, banque:'', fin:'', note:''};
             const aCredit = CREDITS_DATA.some(cr => cr.bienId === b.id);
             const moisRestants = c.fin ? Math.max(0, Math.round((new Date(c.fin) - new Date()) / (1000*60*60*24*30))) : null;
             const finAlert = moisRestants !== null && moisRestants < 24;
-            return `<tr${aCredit ? '' : ' style="opacity:.85"'}>
+            return `<tr${aCredit ? '' : ' style="opacity:.8"'}>
               <td><b style="font-size:12px">${b.n || '—'}</b><br><small style="color:var(--mu);font-size:10px">${b.l || ''} · ${b.a || ''}</small></td>
               <td style="text-align:left">
                 <input type="text" value="${c.banque||''}" placeholder="Banque…"
                   onchange="updateCredit(${b.id},'banque',this.value)"
                   style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;background:var(--bg);outline:none;width:130px;">
               </td>
-              <td style="text-align:right;font-family:monospace;font-weight:700;color:#c0392b">
+              <td style="text-align:right">
                 <input type="number" value="${c.mens||''}" placeholder="0"
                   onchange="updateCredit(${b.id},'mens',parseFloat(this.value)||0)"
                   style="border:1px solid var(--brd);border-radius:5px;padding:4px 8px;font-size:12px;font-family:monospace;font-weight:700;color:#c0392b;background:var(--bg);outline:none;width:90px;text-align:right;">
@@ -2015,13 +2013,11 @@ function buildCreditsPage() {
     container.appendChild(wrap);
   });
 
-  // Bouton sauvegarder global
   const saveBtn = document.createElement('div');
   saveBtn.style.cssText = 'display:flex;justify-content:flex-end;margin-top:16px;';
   saveBtn.innerHTML = `<button class="btn btn-p" onclick="saveAllCredits()">💾 Tout enregistrer</button>`;
   container.appendChild(saveBtn);
 
-  // Populate modal select
   const sel = document.getElementById('cr-bien');
   if (sel) {
     sel.innerHTML = '<option value="">— Sélectionner —</option>' +
