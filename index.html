@@ -2425,18 +2425,77 @@ function downloadPDF(){
   const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
   html2pdf().set(opt).from(el).save().catch(e=>{toast('❌ Erreur PDF');console.log('Erreur html2pdf:',e);});
 }
-// ── Envoi email via Resend ───────────────────────────────────────────
+// ── Envoi email via Resend (avec PDF en pièce jointe) ────────────────
 async function sendSingleQuittance(bienId){
   const b = BIENS.find(x=>x.id===bienId);
   if(!b){toast('⚠️ Bien introuvable');return;}
   const email = LOCATAIRE_EMAILS[bienId];
   if(!email){toast("Renseignez l'email du locataire");return;}
-  if(!EMAIL_CONFIG.key){toast("Configurez la cle API Resend d'abord");return;}
 
-  const htmlContent = genQuittanceHTML(b).replace(/[\r\n]/g,' ');
-  const subj = EMAIL_CONFIG.subject.replace('{mois',MN[CUR]).replace('{annee}','2025').replace('{mois}',MN[CUR]);
-  const body = EMAIL_CONFIG.body.replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025').replace(/\{bailleur\}/g,BAILLEUR.nom||'Le Bailleur');
+  // Texte du corps du mail (depuis la config)
+  const subj = (EMAIL_CONFIG.subject||'Quittance de loyer — {mois} {annee}')
+    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025');
+  const body = (EMAIL_CONFIG.body||'')
+    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025').replace(/\{bailleur\}/g,BAILLEUR.nom||'Le Bailleur');
+  const mailHtml = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;white-space:pre-wrap;">${body}</div>`;
 
+  // 1) Générer le PDF de la quittance en mémoire (base64), sans le télécharger
+  toast('📄 Préparation de la quittance...');
+  let pdfBase64 = '';
+  try {
+    // CSS de la quittance (mêmes styles que l'aperçu/impression)
+    const quittanceCSS = `
+      <style>
+      .qwrap *{box-sizing:border-box;margin:0;padding:0;font-family:'Sora',Arial,sans-serif;}
+      .qwrap .quitance-preview{max-width:794px;margin:0 auto;background:#fff;}
+      .qwrap .q-header{background:linear-gradient(135deg,#003F87,#1557b0);padding:28px 36px 22px;position:relative;}
+      .qwrap .q-header h2{font-size:24px;font-weight:800;color:#fff;margin-bottom:4px;}
+      .qwrap .q-header .q-sub{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:.06em;text-transform:uppercase;}
+      .qwrap .q-header .q-ref{position:absolute;top:20px;right:36px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;}
+      .qwrap .q-body{padding:28px 36px;}
+      .qwrap .q-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
+      .qwrap .q-party-box{background:#f5f7fc;border-radius:8px;padding:14px 16px;border-left:3px solid #003F87;}
+      .qwrap .q-party-box.right{border-left-color:#0f7a45;}
+      .qwrap .q-party-label{font-size:10px;color:#6272a0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+      .qwrap .q-party-name{font-size:15px;font-weight:700;}
+      .qwrap .q-party-addr{font-size:12px;color:#6272a0;margin-top:3px;line-height:1.5;}
+      .qwrap .q-montant-box{background:linear-gradient(135deg,#003F87,#1557b0);border-radius:10px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;}
+      .qwrap .qm-label{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;}
+      .qwrap .qm-val{font-size:28px;font-weight:900;color:#fff;}
+      .qwrap .qm-lettres{font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;font-style:italic;}
+      .qwrap .q-details-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+      .qwrap .q-details-table td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e8eef7;}
+      .qwrap .q-details-table td:last-child{font-weight:600;text-align:right;}
+      .qwrap .q-legal{background:#f9fafb;border:1px solid #e8eef7;border-radius:8px;padding:12px 16px;font-size:11px;color:#6272a0;line-height:1.7;font-style:italic;margin-bottom:20px;}
+      .qwrap .q-signature{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e8eef7;}
+      .qwrap .q-footer{background:#f0f5fc;padding:12px 36px;display:flex;justify-content:space-between;}
+      .qwrap .qf-txt{font-size:10px;color:#6272a0;}
+      </style>`;
+
+    // On fabrique le HTML de la quittance dans un conteneur temporaire hors écran
+    const wrap = document.createElement('div');
+    wrap.className = 'qwrap';
+    wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;';
+    wrap.innerHTML = quittanceCSS + genQuittanceHTML(b);
+    document.body.appendChild(wrap);
+
+    const opt = {
+      margin:0,
+      image:{type:'jpeg',quality:0.98},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    };
+    // outputPdf('datauristring') renvoie une chaîne "data:application/pdf;base64,XXXX"
+    const dataUri = await html2pdf().set(opt).from(wrap).outputPdf('datauristring');
+    pdfBase64 = dataUri.split(',')[1]; // on garde uniquement la partie base64
+    document.body.removeChild(wrap);
+  } catch(e){
+    toast('❌ Erreur génération PDF : '+e.message);
+    return;
+  }
+
+  // 2) Envoyer le mail avec le PDF en pièce jointe
+  const fileName = `Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`;
   toast('📤 Envoi en cours...');
   try {
     const resp = await fetch('/api/send-email',{
@@ -2444,18 +2503,18 @@ async function sendSingleQuittance(bienId){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         to: email,
-        nom: b ? (b.l||b.n) : '',
-        mois: MN[CUR],
-        annee: '2025',
-        html: `<pre style="font-family:Arial;font-size:13px;white-space:pre-wrap;">${body}</pre><br><hr><br>${htmlContent}`
+        from: EMAIL_CONFIG.from || 'onboarding@resend.dev',
+        subject: subj,
+        html: mailHtml,
+        pdfBase64: pdfBase64,
+        pdfFilename: fileName
       })
     });
-    if(resp.ok){
-      const data = await resp.json();
-      if(data.success) toast('Quittance envoyee a '+email);
-      else toast('Erreur: '+(data.error||'Verifiez config'));
+    const data = await resp.json();
+    if(resp.ok && data.success){
+      toast('✅ Quittance envoyée à '+email);
     } else {
-      toast('Erreur envoi email');
+      toast('❌ Erreur : '+(data.error||'Vérifiez la configuration'));
     }
   } catch(e){
     toast('❌ Erreur réseau : '+e.message);
@@ -2473,7 +2532,7 @@ async function sendAllSelected(){
   for(const cb of checked){
     const bienId = parseInt(cb.dataset.bien);
     const email = LOCATAIRE_EMAILS[bienId];
-    if(email && EMAIL_CONFIG.key){
+    if(email){
       await sendSingleQuittance(bienId);
       sent++;
       await new Promise(r=>setTimeout(r,300));
@@ -2492,7 +2551,7 @@ function checkRelancesImpayes(){
       const joursRetard = Math.floor((today-dateLoyer)/(1000*60*60*24));
       if(joursRetard>=15){
         const email = LOCATAIRE_EMAILS[b.id];
-        if(email && EMAIL_CONFIG.key){
+        if(email){
           sendRelance(b, joursRetard);
         }
       }
@@ -2501,7 +2560,7 @@ function checkRelancesImpayes(){
 }
 
 async function sendRelance(b, joursRetard){
-  if(!EMAIL_CONFIG.key||!LOCATAIRE_EMAILS[b.id]) return;
+  if(!LOCATAIRE_EMAILS[b.id]) return;
   const subj = `⚠️ Relance - Loyer impayé - ${MN[CUR]} 2025`;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
@@ -2525,7 +2584,7 @@ async function sendRelance(b, joursRetard){
     await fetch('/api/send-email',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({to:LOCATAIRE_EMAILS[b.id],nom:b.l||b.n,mois:MN[CUR],annee:'2025',html:html})
+      body:JSON.stringify({to:LOCATAIRE_EMAILS[b.id],from:EMAIL_CONFIG.from||'onboarding@resend.dev',subject:subj,html:html})
     });
     toast('⚠️ Relance envoyée à '+b.l+' ('+joursRetard+'j de retard)');
   } catch(e){}
@@ -2650,8 +2709,7 @@ function saveEmailConfig(){
 }
 
 async function testEmail(){
-  if(!EMAIL_CONFIG.key){ saveEmailConfig(); }
-  if(!EMAIL_CONFIG.key){ toast("Entrez une cle API Resend"); return; }
+  saveEmailConfig();
   toast('📤 Envoi du test...');
   try {
     const resp = await fetch('/api/send-email',{
@@ -2659,15 +2717,14 @@ async function testEmail(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         to: BAILLEUR.email||'contactdrh26@gmail.com',
-        nom: 'Test',
-        mois: MN[CUR],
-        annee: '2025',
+        from: EMAIL_CONFIG.from||'onboarding@resend.dev',
+        subject: 'Test Dashboard Immobilier',
         html: '<h2>Test Dashboard Immobilier</h2><p>Configuration email fonctionnelle !</p>'
       })
     });
     const d = await resp.json();
-    if(resp.ok&&d.success) toast('Email de test envoye !');
-    else toast('Erreur: '+(d.error||'Verifiez config'));
+    if(resp.ok&&d.success) toast('✅ Email de test envoyé !');
+    else toast('❌ Erreur : '+(d.error||'Vérifiez la configuration'));
   } catch(e){ toast('❌ Erreur : '+e.message); }
 }
 
