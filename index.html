@@ -203,7 +203,39 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
 
 ::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
 @media(max-width:1100px){.k4{grid-template-columns:repeat(2,1fr);}.ann-grid{grid-template-columns:repeat(3,1fr);}.cg2{grid-template-columns:1fr;}}
-@media(max-width:768px){#sb{width:50px;} #sb .sb-logo h1,#sb .sb-logo p,#sb .sb-a span,#sb .sb-sec,#sb .sb-bot .sl{display:none;} #mn{margin-left:50px;} .pg{padding:14px;} .k4,.k3{grid-template-columns:repeat(2,1fr);} .ann-grid{grid-template-columns:repeat(2,1fr);} .lc-grid{grid-template-columns:1fr;} .fg3,.fg4{grid-template-columns:1fr 1fr;}}
+/* ── HAMBURGER (mobile only) ── */
+#burger{display:none;position:fixed;top:9px;left:10px;z-index:201;width:40px;height:40px;border:none;border-radius:9px;background:var(--bl);color:#fff;font-size:19px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);align-items:center;justify-content:center;}
+#sb-overlay{display:none;position:fixed;inset:0;background:rgba(5,15,40,.45);z-index:99;}
+
+@media(max-width:768px){
+  /* Sidebar devient un panneau coulissant masqué par défaut */
+  #sb{width:230px;transform:translateX(-100%);transition:transform .25s ease;box-shadow:2px 0 16px rgba(0,0,0,.25);}
+  #sb.open{transform:translateX(0);}
+  /* Quand ouverte, on réaffiche tout le texte (au cas où l'ancienne règle traînerait) */
+  #sb .sb-logo h1,#sb .sb-logo p,#sb .sb-a span,#sb .sb-sec,#sb .sb-bot .sl{display:revert;}
+  /* Le contenu prend toute la largeur */
+  #mn{margin-left:0;}
+  /* Le bouton hamburger et le voile s'activent */
+  #burger{display:flex;}
+  #sb-overlay.show{display:block;}
+  /* Décaler la barre de mois pour ne pas passer sous le hamburger */
+  .mbar-top{padding-left:58px;}
+  /* Densité générale */
+  .pg{padding:14px;}
+  .k4,.k3{grid-template-columns:repeat(2,1fr);}
+  .ann-grid{grid-template-columns:repeat(2,1fr);}
+  .lc-grid{grid-template-columns:1fr;}
+  .fg3,.fg4{grid-template-columns:1fr 1fr;}
+  /* Tous les tableaux deviennent défilables horizontalement sur mobile */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tw table{min-width:600px;}
+}
+@media(max-width:480px){
+  .k4,.k3{grid-template-columns:1fr;}
+  .ann-grid{grid-template-columns:1fr;}
+  .fg3,.fg4{grid-template-columns:1fr;}
+  .mbar-title{font-size:13px;}
+}
 
 /* ─── QUITTANCES ─── */
 .quitance-preview{
@@ -279,6 +311,10 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
 </style>
 </head>
 <body>
+
+<!-- Bouton menu mobile + voile -->
+<button id="burger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+<div id="sb-overlay" onclick="closeSidebar()"></div>
 
 <!-- ══════════ SIDEBAR ══════════ -->
 <nav id="sb">
@@ -986,6 +1022,21 @@ function goPage(p,el){
   if(p==='annuel') buildAnnuelPage();
   if(p==='credits') buildCreditsPage();
   if(p==='quittances') buildQuittancesPage();
+  closeSidebar();
+}
+
+/* ── Gestion du menu coulissant sur mobile ── */
+function toggleSidebar(){
+  const sb=document.getElementById('sb');
+  const ov=document.getElementById('sb-overlay');
+  const open=sb.classList.toggle('open');
+  if(open){ ov.classList.add('show'); } else { ov.classList.remove('show'); }
+}
+function closeSidebar(){
+  const sb=document.getElementById('sb');
+  const ov=document.getElementById('sb-overlay');
+  sb.classList.remove('open');
+  ov.classList.remove('show');
 }
 
 function navMois(d){
