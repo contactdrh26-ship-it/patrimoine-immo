@@ -905,7 +905,7 @@ Cordialement,
       <div class="fg"><label>Adresse / Ville</label><input id="nb-a" type="text" placeholder="Ville"></div>
       <div class="fg"><label>Entité propriétaire</label>
         <select id="nb-e">
-          <option>Bismuth Jacques</option><option>SCI VB Immo</option><option>SCI SJ Immo Gagny</option>
+          <option>Bismuth Jacques</option><option>SCI VB Immo</option><option>SCI SJ Immo</option><option>SCI SJ Immo Gagny</option>
           <option>Sophie Bismuth</option><option>SCI SJ 5Q Pasteur</option><option>SCI JML Immo</option>
           <option>SCI BOBI Immo</option><option>PSB Pasteur</option><option>Locaux Commerciaux</option>
         </select>
@@ -2194,7 +2194,12 @@ const BAILLEURS = {
 const _bSaved = JSON.parse(localStorage.getItem('immo_bailleurs')||'{}');
 Object.keys(BAILLEURS).forEach(k=>{ if(_bSaved[k]){BAILLEURS[k].email=_bSaved[k].email||''; BAILLEURS[k].tel=_bSaved[k].tel||'';} });
 
-function getBailleur(b){ return BAILLEURS[b.e] || BAILLEURS['Bismuth Jacques']; }
+const ENTITE_ALIAS = {
+  'PSB Pasteur':'SCI SJ Immo',
+  'SCI SJ Immo Gagny':'SCI SJ Immo',
+  'SCI SJ 5Q Pasteur':'SCI SJ Immo'
+};
+function getBailleur(b){ return BAILLEURS[b.e] || BAILLEURS[ENTITE_ALIAS[b.e]] || BAILLEURS['Bismuth Jacques']; }
 
 let BAILLEUR = BAILLEURS['Bismuth Jacques'];
 let EMAIL_CONFIG = JSON.parse(localStorage.getItem('immo_email_config') || 'null') || {
