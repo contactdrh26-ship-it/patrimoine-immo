@@ -782,7 +782,7 @@ Cordialement,
             <input type="date" id="fl-debut" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
           </div>
           <div class="fg"><label>Fin du bail</label>
-            <input type="date" id="fl-fin" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+            <input type="date" id="fl-fin" onchange="updateProrataInfo()" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
           </div>
         </div>
         <div class="fg2" style="gap:12px;margin-bottom:12px;">
@@ -793,7 +793,9 @@ Cordialement,
             <input type="text" id="fl-signataire" value="M. Jacques BISMUTH" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
           </div>
         </div>
+        <div id="fl-prorata-info" style="display:none;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.6;margin-bottom:12px;"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd);">
+          <button class="btn btn-sm" style="background:#b45309;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;" onclick="cloturerLocation()">🏁 Clôturer la location</button>
           <button class="btn btn-p btn-sm" onclick="previewAttestation()">👁️ Générer l'aperçu</button>
         </div>
       </div>
@@ -915,6 +917,8 @@ Cordialement,
       </div>
       <div class="fg"><label>Locataire</label><input id="nb-l" type="text" placeholder="Nom du locataire"></div>
       <div class="fg"><label>Loyer mensuel (€)</label><input id="nb-loy" type="number" placeholder="0"></div>
+      <div class="fg"><label>🔑 Date d'entrée du locataire</label><input id="nb-din" type="date"></div>
+      <div class="fg"><label>🏁 Date de sortie (fin de bail)</label><input id="nb-dout" type="date"></div>
       <div class="fg"><label>Crédit mensuel (€)</label><input id="nb-crd" type="number" placeholder="0"></div>
       <div class="fg"><label>Charges mensuelles (€)</label><input id="nb-chg" type="number" placeholder="0"></div>
     </div>
@@ -936,12 +940,46 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ══════════════════════════════════
 const MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const MS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-// Loyers prévus par mois (vérifiés fichier)
-const PREV=[38178,38178,38878,38187,43928,43928,43928,43928,43078,43928,43928,43928];
 // Crédits par mois
 const CRED=[22486,22486,22486,22486,26601,26601,26601,26601,26601,26601,26601,26601];
-// CF prévisionnel
-const CF=PREV.map((l,i)=>l-CRED[i]-[3435,3435,3435,3543,3543,3543,3535,3535,3535,3535,3535,3535][i]);
+const DEP_FIXES=[3435,3435,3435,3543,3543,3543,3535,3535,3535,3535,3535,3535];
+const ANNEE_APP = new Date().getFullYear();
+
+// ── Occupation & prorata au jour près ──
+// b.din = date d'entrée du locataire, b.dout = date de sortie (fin de bail)
+function joursOccupes(b,m){
+  const y=ANNEE_APP;
+  const start=new Date(y,m,1), end=new Date(y,m+1,0);
+  const daysIn=end.getDate();
+  const far=new Date(1900,0,1), fut=new Date(2200,0,1);
+  const din=b.din?new Date(b.din):null, dout=b.dout?new Date(b.dout):null;
+  let segs;
+  if(!dout) segs=[[din||far,fut]];
+  else if(din&&din>dout) segs=[[far,dout],[din,fut]]; // relocation : occupé jusqu'à dout, puis à partir de din
+  else segs=[[din||far,dout]];
+  let days=0;
+  segs.forEach(sg=>{
+    const s=sg[0]>start?sg[0]:start, e=sg[1]<end?sg[1]:end;
+    if(e>=s) days+=Math.round((e-s)/86400000)+1;
+  });
+  return Math.min(days,daysIn);
+}
+function loyerAttendu(b,m){
+  if(!b.l&&!b.din&&!b.dout) return 0; // bien vacant sans historique
+  const daysIn=new Date(ANNEE_APP,m+1,0).getDate();
+  const dj=joursOccupes(b,m);
+  if(dj>=daysIn) return b.loy;
+  return Math.round(b.loy*dj/daysIn);
+}
+// Loyers prévus par mois — calculés depuis les biens (fallback avant chargement Supabase)
+let PREV=[38178,38178,38878,38187,43928,43928,43928,43928,43078,43928,43928,43928];
+let CF=PREV.map((l,i)=>l-CRED[i]-DEP_FIXES[i]);
+function refreshPrev(){
+  PREV=MS.map((_,m)=>BIENS.reduce((s,b)=>s+loyerAttendu(b,m),0));
+  CF=PREV.map((l,i)=>l-CRED[i]-DEP_FIXES[i]);
+  if(document.getElementById('pg-annuel')?.classList.contains('on')) buildAnnuelPage();
+  if(document.getElementById('pg-loyers')?.classList.contains('on')) buildLoyersPage();
+}
 
 const CAT_ICO={syndic:'🏢',eau:'💧',elec:'⚡',assurance:'🛡️',tf:'🏛️',travaux:'🔧',entretien:'🧹',gestion:'📋',credit:'🏦',divers:'📎'};
 const CAT_COL={syndic:'#1a5cad',eau:'#0891b2',elec:'#d97706',assurance:'#6d28d9',tf:'#9a6f00',travaux:'#c0392b',entretien:'#0f7a45',gestion:'#374151',credit:'#003F87',divers:'#6272a0'};
@@ -999,14 +1037,23 @@ async function chargerBiens(){
   if(error){ console.log('Erreur chargement biens:', error); return; }
   if(data && data.length){
     BIENS = data;
+    refreshPrev();
     if(document.getElementById('pg-biens')?.classList.contains('on')) buildBiensTable();
   }
 }
 chargerBiens();
 async function saveBiens(){
-  const { error } = await sb.from('biens').upsert(
-    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg}))
+  refreshPrev();
+  let { error } = await sb.from('biens').upsert(
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null}))
   );
+  if(error && (error.message||'').includes('column')){
+    // Colonnes din/dout pas encore créées dans Supabase → sauvegarde sans les dates
+    ({ error } = await sb.from('biens').upsert(
+      BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg}))
+    ));
+    toast('⚠️ Dates non synchronisées : ajoutez les colonnes din/dout dans Supabase');
+  }
   if(error){ toast('❌ Erreur sauvegarde'); console.log(error); }
 }
   // === FONCTION TEMPORAIRE — à utiliser une seule fois pour remplir Supabase ===
@@ -1276,9 +1323,15 @@ function buildLoyersPage(){
       // Cards biens de cet immeuble
       biensImm.forEach(b=>{
         const s=mdata[b.id]||{};
-        const enc=s.enc!==undefined?s.enc:b.loy;
+        const att=loyerAttendu(b,CUR);
+        const enc=s.enc!==undefined?s.enc:att;
         const st=s.st||'att';
         const net=b.loy-b.crd-b.chg;
+        const dout=b.dout?new Date(b.dout):null, din=b.din?new Date(b.din):null;
+        let badge='';
+        if(dout&&dout.getFullYear()===ANNEE_APP&&dout.getMonth()===CUR) badge=`<span class="bd bo" style="font-size:9px">🏁 Départ le ${dout.getDate()}</span>`;
+        else if(din&&din.getFullYear()===ANNEE_APP&&din.getMonth()===CUR) badge=`<span class="bd bg" style="font-size:9px">🔑 Entrée le ${din.getDate()}</span>`;
+        else if(att===0&&(dout||!b.l)) badge=`<span class="bd br" style="font-size:9px">🚫 Vacant</span>`;
 
         const div=document.createElement('div');
         div.className='lc';
@@ -1290,15 +1343,16 @@ function buildLoyersPage(){
               <div class="ln">${b.n}</div>
               <div class="la" style="color:${ent.color};font-weight:600">${b.l||'Vacant'}</div>
             </div>
+            ${badge}
             ${net<0?`<span class="bd br" style="font-size:9px">CF−</span>`:''}
           </div>
           <div class="lc-b">
             <div>
-              <div class="lc-loy">${b.loy.toLocaleString('fr-FR')} €</div>
-              <div class="lc-loy-sub">${b.l||'Vacant'}</div>
+              <div class="lc-loy">${att.toLocaleString('fr-FR')} €</div>
+              <div class="lc-loy-sub">${att!==b.loy?`prorata (plein : ${b.loy.toLocaleString('fr-FR')} €)`:(b.l||'Vacant')}</div>
             </div>
             <div class="lc-fields">
-              <input class="lc-inp" id="e-${b.id}" type="number" value="${enc}" placeholder="Montant réel" onchange="onEChange(${b.id},${b.loy})">
+              <input class="lc-inp" id="e-${b.id}" type="number" value="${enc}" placeholder="Montant réel" onchange="onEChange(${b.id},${att})">
               <input class="lc-inp" id="dt-${b.id}" type="date" value="${s.date||''}">
               <select id="mo-${b.id}" style="border:1px solid var(--brd);border-radius:6px;padding:5px 7px;font-size:11px;background:var(--bg);font-family:'Sora',sans-serif;color:var(--tx);outline:none;">
                 ${['Virement','Chèque','Espèces','Prélèvement'].map(m=>`<option ${s.mode===m?'selected':''}>${m}</option>`).join('')}
@@ -1317,7 +1371,7 @@ function buildLoyersPage(){
             <div class="ecart-lbl" id="ec-${b.id}"></div>
           </div>`;
         grid.appendChild(div);
-        onEChange(b.id,b.loy);
+        onEChange(b.id,att);
       });
     });
   });
@@ -1866,7 +1920,7 @@ function buildBiensTable(){
 
   function openAddBien(){
   _editBienId = null;
-  ['nb-n','nb-a','nb-l','nb-loy','nb-crd','nb-chg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['nb-n','nb-a','nb-l','nb-loy','nb-crd','nb-chg','nb-din','nb-dout'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const titre = document.querySelector('#mo-bien .mo-title');
   if(titre) titre.childNodes[0].textContent = '🏠 Ajouter un Bien ';
   openModal('mo-bien');
@@ -1883,6 +1937,8 @@ function openEditBien(id){
   document.getElementById('nb-loy').value = b.loy||0;
   document.getElementById('nb-crd').value = b.crd||0;
   document.getElementById('nb-chg').value = b.chg||0;
+  document.getElementById('nb-din').value = b.din||'';
+  document.getElementById('nb-dout').value = b.dout||'';
   // Changer le titre et le bouton du modal en mode "modification"
   const titre = document.querySelector('#mo-bien .mo-title');
   if(titre) titre.childNodes[0].textContent = '✏️ Modifier le bien ';
@@ -1902,6 +1958,8 @@ function addBien(){
       b.loy = pf('nb-loy');
       b.crd = pf('nb-crd');
       b.chg = pf('nb-chg');
+      b.din = v('nb-din')||null;
+      b.dout = v('nb-dout')||null;
     }
     _editBienId = null;
     saveBiens();
@@ -1912,7 +1970,7 @@ function addBien(){
     return;
   }
   // Mode ajout (comportement d'origine)
-  BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg')});
+  BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg'),din:v('nb-din')||null,dout:v('nb-dout')||null});
   saveBiens();
   populateBienSelect();closeModal('mo-bien');buildBiensTable();toast('✅ Bien ajouté');
 }
@@ -2637,10 +2695,46 @@ function onFinLocBienChange(){
   const b = BIENS.find(x=>x.id===bienId);
   if(!b) return;
   const saved = FIN_LOC_DATA[bienId]||{};
-  document.getElementById('fl-debut').value = saved.debut||'';
-  document.getElementById('fl-fin').value   = saved.fin||new Date().toISOString().slice(0,10);
+  document.getElementById('fl-debut').value = saved.debut||b.din||'';
+  document.getElementById('fl-fin').value   = saved.fin||b.dout||new Date().toISOString().slice(0,10);
   document.getElementById('fl-adresse').value = saved.adresse||b.a||'';
   document.getElementById('fl-email').value = LOCATAIRE_EMAILS[bienId]||'';
+  updateProrataInfo();
+}
+
+function updateProrataInfo(){
+  const info = document.getElementById('fl-prorata-info');
+  const bienId = parseInt(document.getElementById('fl-bien').value);
+  const b = BIENS.find(x=>x.id===bienId);
+  const fin = v('fl-fin');
+  if(!b||!fin){ info.style.display='none'; return; }
+  const d = new Date(fin);
+  const daysIn = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  const jours = d.getDate();
+  const prorata = Math.round(b.loy*jours/daysIn);
+  const moisNom = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][d.getMonth()];
+  info.style.display='block';
+  info.innerHTML = `📐 <b>Prorata du dernier mois</b> : départ le <b>${jours} ${moisNom}</b> → 
+    ${jours} jours sur ${daysIn} → loyer attendu de ${moisNom} : <b>${prorata.toLocaleString('fr-FR')} €</b> 
+    (au lieu de ${b.loy.toLocaleString('fr-FR')} €).<br>
+    En cliquant sur <b>🏁 Clôturer la location</b>, cette date de sortie sera enregistrée sur le bien : 
+    le mois de départ passera automatiquement au prorata et les mois suivants à 0 € (Non occupé), 
+    jusqu'à la saisie d'une date d'entrée d'un nouveau locataire (via ✏️ dans Mes Biens).`;
+}
+
+async function cloturerLocation(){
+  const bienId = parseInt(document.getElementById('fl-bien').value);
+  const b = BIENS.find(x=>x.id===bienId);
+  if(!b){toast('⚠️ Sélectionnez un bien');return;}
+  const fin = v('fl-fin');
+  if(!fin){toast('⚠️ Renseignez la date de fin du bail');return;}
+  if(!confirm(`Clôturer la location de "${b.l||b.n}" au ${fmtDateFR(fin)} ?\n\nLe loyer attendu passera au prorata ce mois-ci, puis à 0 € ensuite.`)) return;
+  b.dout = fin;
+  if(v('fl-debut')&&!b.din) b.din = v('fl-debut');
+  saveFinLocData(bienId);
+  await saveBiens();
+  toast(`🏁 Location clôturée au ${fmtDateFR(fin)} — prorata appliqué`);
+  updateProrataInfo();
 }
 
 function saveFinLocData(bienId){
