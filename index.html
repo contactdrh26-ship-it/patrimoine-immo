@@ -320,7 +320,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
 <nav id="sb">
   <div class="sb-logo">
     <h1>Patrimoine<br>Immobilier</h1>
-    <p>GESTION MENSUELLE 2025</p>
+    <p>GESTION MENSUELLE <span class="yr">2025</span></p>
   </div>
   <div class="sb-sec">Tableau de bord</div>
   <nav class="sb-nav">
@@ -356,7 +356,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
   <!-- MONTH NAV BAR -->
   <div class="mbar">
     <div class="mbar-top">
-      <div class="mbar-title" id="pg-title">📊 Vue Annuelle 2025</div>
+      <div class="mbar-title" id="pg-title">📊 Vue Annuelle <span class="yr">2025</span></div>
       <div class="mbar-actions">
         <button class="btn btn-s btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn btn-p btn-sm" onclick="goPage('loyers',document.querySelector('[data-page=loyers]'))">✏️ Saisir ce mois</button>
@@ -384,7 +384,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
     <div class="ann-grid" id="ann-grid"></div>
 
     <div class="cg2">
-      <div class="card"><h3>Loyers · Crédits · Cash-Flow mensuel 2025</h3><div class="ch-lg"><canvas id="cA1"></canvas></div></div>
+      <div class="card"><h3>Loyers · Crédits · Cash-Flow mensuel <span class="yr">2025</span></h3><div class="ch-lg"><canvas id="cA1"></canvas></div></div>
       <div class="card"><h3>Encaissements réels vs Prévus</h3><div class="ch-lg"><canvas id="cA2"></canvas></div></div>
     </div>
     <div class="cg2">
@@ -944,6 +944,9 @@ const MS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','D
 const CRED=[22486,22486,22486,22486,26601,26601,26601,26601,26601,26601,26601,26601];
 const DEP_FIXES=[3435,3435,3435,3543,3543,3543,3535,3535,3535,3535,3535,3535];
 const ANNEE_APP = new Date().getFullYear();
+// Met à jour l'année affichée dans l'interface (titres statiques)
+document.querySelectorAll('.yr').forEach(e=>e.textContent=ANNEE_APP);
+const dref=document.getElementById('d-ref'); if(dref) dref.placeholder='FAC-'+ANNEE_APP+'-…';
 
 // ── Occupation & prorata au jour près ──
 // b.din = date d'entrée du locataire, b.dout = date de sortie (fin de bail)
@@ -1105,7 +1108,7 @@ let CUR=new Date().getMonth(); // mois courant
 // ══════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════
-const PAGE_TITLES={annuel:'📊 Vue Annuelle 2025',loyers:'🏠 Loyers du Mois',depenses:'💸 Dépenses du Mois',resultat:'📈 Résultat du Mois',historique:'📁 Historique',biens:'🏘️ Mes Biens'};
+const PAGE_TITLES={annuel:'📊 Vue Annuelle '+ANNEE_APP,loyers:'🏠 Loyers du Mois',depenses:'💸 Dépenses du Mois',resultat:'📈 Résultat du Mois',historique:'📁 Historique',biens:'🏘️ Mes Biens'};
 
 function goPage(p,el){
   document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
@@ -1225,7 +1228,7 @@ function buildAnnuelPage(){
 //  LOYERS DU MOIS
 // ══════════════════════════════════
 function buildLoyersPage(){
-  set('loy-mois-label',MN[CUR]);set('loy-mois-sub',MN[CUR]+' 2025');
+  set('loy-mois-label',MN[CUR]);set('loy-mois-sub',MN[CUR]+' '+ANNEE_APP);
   set('loy-attendu',fmt(PREV[CUR]));
 
   const grid=document.getElementById('lc-grid');
@@ -1466,8 +1469,8 @@ function saveLoyers(){
 // ══════════════════════════════════
 function buildDepPage(){
   set('dep-mois-label',MN[CUR]);
-  set('dep-list-mois',MN[CUR]+' 2025');
-  set('dep-form-mois',MN[CUR]+' 2025');
+  set('dep-list-mois',MN[CUR]+' '+ANNEE_APP);
+  set('dep-form-mois',MN[CUR]+' '+ANNEE_APP);
   refreshDepStats();
   renderDepList();
 }
@@ -2291,7 +2294,7 @@ function switchQTab(view, el){
 
 // ── Build quittances page ──
 function buildQuittancesPage(){
-  set('q-mois-label', MN[CUR]+' 2025');
+  set('q-mois-label', MN[CUR]+' '+ANNEE_APP);
   buildBailleursGrid();
 
   const mdata = LD[CUR]||{};
@@ -2372,7 +2375,7 @@ function genQuittanceHTML(b){
   const BL = getBailleur(b);
   const enc = s.enc||b.loy;
   const moisNom = MN[CUR];
-  const annee = 2025;
+  const annee = ANNEE_APP;
   const refNum = `QUI-${annee}-${String(CUR+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
   const date = s.date || new Date().toLocaleDateString('fr-FR');
 
@@ -2462,7 +2465,7 @@ function genQuittanceHTML(b){
       </div>
       <div class="q-footer">
         <div class="qf-txt">Réf. ${refNum} · ${BL.nom||'Bailleur'} · ${BL.email||''}</div>
-        <div class="qf-txt">Document généré automatiquement · Patrimoine Immobilier 2025</div>
+        <div class="qf-txt">Document généré automatiquement · Patrimoine Immobilier ${annee}</div>
       </div>
     </div>`;
 }
@@ -2538,7 +2541,7 @@ function downloadPDF(){
   const el=document.getElementById('quittance-print-'+b.id);
   if(!el){toast('⚠️ Ouvrez l\'aperçu (Voir) d\'abord');return;}
   toast('📄 Génération du PDF...');
-  const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+  const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_${ANNEE_APP}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
   html2pdf().set(opt).from(el).save().catch(e=>{toast('❌ Erreur PDF');console.log('Erreur html2pdf:',e);});
 }
 // ── Envoi email via Resend (PDF généré côté serveur) ─────────────────
@@ -2553,15 +2556,15 @@ async function sendSingleQuittance(bienId){
 
   const BL = getBailleur(b);
   const enc = s.enc||b.loy;
-  const annee = 2025;
+  const annee = ANNEE_APP;
   const refNum = `QUI-${annee}-${String(CUR+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
   const datePaie = s.date || new Date().toLocaleDateString('fr-FR');
 
   // Texte du corps du mail (depuis la config)
   const subj = (EMAIL_CONFIG.subject||'Quittance de loyer — {mois} {annee}')
-    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025');
+    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,String(ANNEE_APP));
   const body = (EMAIL_CONFIG.body||'Bonjour,\n\nVeuillez trouver ci-joint votre quittance de loyer.\n\nCordialement,')
-    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,'2025').replace(/\{bailleur\}/g,BL.nom||'Le Bailleur');
+    .replace(/\{mois\}/g,MN[CUR]).replace(/\{annee\}/g,String(ANNEE_APP)).replace(/\{bailleur\}/g,BL.nom||'Le Bailleur');
   const mailHtml = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;white-space:pre-wrap;">${body}</div>`;
 
   // Données de la quittance envoyées au serveur (qui génère le PDF)
@@ -2585,7 +2588,7 @@ async function sendSingleQuittance(bienId){
     mode: s.mode||'Virement bancaire'
   };
 
-  const fileName = `Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_2025.pdf`;
+  const fileName = `Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_${ANNEE_APP}.pdf`;
   toast('📤 Envoi en cours...');
   try {
     const resp = await fetch('/api/send-email',{
@@ -2651,16 +2654,16 @@ function checkRelancesImpayes(){
 
 async function sendRelance(b, joursRetard){
   if(!LOCATAIRE_EMAILS[b.id]) return;
-  const subj = `⚠️ Relance - Loyer impayé - ${MN[CUR]} 2025`;
+  const subj = `⚠️ Relance - Loyer impayé - ${MN[CUR]} ${ANNEE_APP}`;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:#c0392b;color:#fff;padding:20px;border-radius:8px 8px 0 0;">
         <h2 style="margin:0;font-size:18px;">⚠️ Relance — Loyer Impayé</h2>
-        <p style="margin:4px 0 0;font-size:12px;opacity:.8;">${MN[CUR]} 2025 · ${b.n}</p>
+        <p style="margin:4px 0 0;font-size:12px;opacity:.8;">${MN[CUR]} ${ANNEE_APP} · ${b.n}</p>
       </div>
       <div style="background:#fff;border:1px solid #e8eef7;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
         <p>Bonjour <strong>${b.l||'Madame, Monsieur'}</strong>,</p>
-        <p style="margin:12px 0;">Sauf erreur de notre part, nous n'avons pas reçu votre règlement du loyer du mois de <strong>${MN[CUR]} 2025</strong> 
+        <p style="margin:12px 0;">Sauf erreur de notre part, nous n'avons pas reçu votre règlement du loyer du mois de <strong>${MN[CUR]} ${ANNEE_APP}</strong> 
         pour le bien situé à <strong>${b.a}</strong>.</p>
         <div style="background:#fce8e6;border-left:3px solid #c0392b;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;">
           <strong>Montant dû : ${b.loy.toLocaleString('fr-FR')} €</strong><br>
@@ -2988,7 +2991,7 @@ function buildEcheancier(){
         <tbody>${rows}</tbody>
         <tfoot>
           <tr style="background:#f0f5fc;border-top:2px solid #003F87;">
-            <td style="padding:10px 14px;font-weight:800;color:#003F87;">TOTAL 2025</td>
+            <td style="padding:10px 14px;font-weight:800;color:#003F87;">TOTAL ${ANNEE_APP}</td>
             <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:#003F87;">${totalDu.toLocaleString('fr-FR')} €</td>
             <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:#0f7a45;">${totalEnc.toLocaleString('fr-FR')} €</td>
             <td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:${totalEnc<totalDu?'#c0392b':'#0f7a45'}">${totalEnc<totalDu?'-'+(totalDu-totalEnc).toLocaleString('fr-FR')+' €':'= Complet'}</td>
