@@ -967,6 +967,15 @@ function joursOccupes(b,m){
   });
   return Math.min(days,daysIn);
 }
+// ── Crédit mensuel d'un bien : priorité à l'onglet Crédits, repli sur la fiche du bien ──
+function crdBien(b){
+  try{
+    const c = CREDITS_DATA && CREDITS_DATA.find(cr=>cr.bienId===b.id);
+    if(c) return c.mens||0;
+  }catch(e){}
+  return b.crd||0;
+}
+
 function loyerAttendu(b,m){
   if(!b.l&&!b.din&&!b.dout) return 0; // bien vacant sans historique
   const daysIn=new Date(ANNEE_APP,m+1,0).getDate();
@@ -1329,7 +1338,7 @@ function buildLoyersPage(){
         const att=loyerAttendu(b,CUR);
         const enc=s.enc!==undefined?s.enc:att;
         const st=s.st||'att';
-        const net=b.loy-b.crd-b.chg;
+        const net=b.loy-crdBien(b)-b.chg;
         const dout=b.dout?new Date(b.dout):null, din=b.din?new Date(b.din):null;
         let badge='';
         if(dout&&dout.getFullYear()===ANNEE_APP&&dout.getMonth()===CUR) badge=`<span class="bd bo" style="font-size:9px">🏁 Départ le ${dout.getDate()}</span>`;
@@ -1641,7 +1650,7 @@ function buildResultatPage(){
       if(s.st==='vac') return;
       nbOcc++;
       loyPrevu+=b.loy;
-      creditEnt+=b.crd;
+      creditEnt+=crdBien(b);
       chargesEnt+=b.chg;
       if(s.enc!==undefined) encEnt+=s.enc;
     });
@@ -1701,9 +1710,9 @@ function buildResultatPage(){
         <td style="font-family:monospace;font-size:11px;text-align:right;color:#999">—</td>
         <td colspan="5" style="text-align:center;font-size:11px;color:#999;font-family:monospace;">— vacant —</td>
       </tr>`;
-      const cfBien=e-b.crd-b.chg;
+      const cfBien=e-crdBien(b)-b.chg;
       const diff=e-b.loy;
-      encEnt+=e;loyEnt+=b.loy;crdEnt+=b.crd;chgEnt+=b.chg;
+      encEnt+=e;loyEnt+=b.loy;crdEnt+=crdBien(b);chgEnt+=b.chg;
       const ST_COL={enc:'#0f7a45',par:'#c96a00',ret:'#9a6f00',imp:'#c0392b',att:'#6272a0'};
       const ST_LBL={enc:'✅ Enc.',par:'⚡ Partiel',ret:'🕐 Retard',imp:'❌ Impayé',att:'⏳'};
       return `<tr>
@@ -1711,7 +1720,7 @@ function buildResultatPage(){
         <td style="text-align:left;font-size:11px;color:var(--mu)">${b.a}</td>
         <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#003F87">${fmt(b.loy)}</td>
         <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${e<b.loy?'#c96a00':'#0f7a45'}">${e>0?fmt(e):'—'}</td>
-        <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${b.crd>0?fmt(b.crd):'—'}</td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${crdBien(b)>0?fmt(crdBien(b)):'—'}</td>
         <td style="text-align:right;font-family:monospace;font-size:12px;color:#c96a00">${b.chg>0?fmt(b.chg):'—'}</td>
         <td style="text-align:right;font-family:monospace;font-size:13px;font-weight:800;color:${cfBien>0?'#0f7a45':cfBien<0?'#c0392b':'#6272a0'}">${e>0?(cfBien>0?'+':'')+fmt(cfBien):'—'}</td>
         <td style="text-align:center"><span style="background:${ST_COL[st]||'#eee'}22;color:${ST_COL[st]};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;font-family:monospace;">${ST_LBL[st]}</span></td>
@@ -1775,13 +1784,13 @@ function buildResultatPage(){
     const s=mdata[b.id]||{};
     const e=s.enc||0;
     const st=s.st||'att';
-    const cfBien=e-b.crd-b.chg;
+    const cfBien=e-crdBien(b)-b.chg;
     return `<tr style="background:${i%2?'#fafbfd':'#fff'}">
       <td><b style="font-size:12px">${b.n}</b><br><small style="color:var(--mu);font-size:10px">${b.l||'—'}</small></td>
       <td style="text-align:left;font-size:11px;color:var(--mu)">${b.e}</td>
       <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#003F87">${fmt(b.loy)}</td>
       <td style="text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${e===0?'#c0392b':e<b.loy?'#c96a00':'#0f7a45'}">${e>0?fmt(e):'—'}</td>
-      <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${b.crd>0?fmt(b.crd):'—'}</td>
+      <td style="text-align:right;font-family:monospace;font-size:12px;color:#c0392b">${crdBien(b)>0?fmt(crdBien(b)):'—'}</td>
       <td style="text-align:right;font-family:monospace;font-size:12px;color:#c96a00">${b.chg>0?fmt(b.chg):'—'}</td>
       <td style="text-align:right;font-family:monospace;font-size:13px;font-weight:800;color:${cfBien>0?'#0f7a45':cfBien<0?'#c0392b':'#6272a0'}">${e>0?(cfBien>0?'+':'')+fmt(cfBien):'—'}</td>
       <td style="text-align:right;font-size:11px;color:var(--mu)">${s.date||'—'}</td>
@@ -1822,7 +1831,7 @@ function buildResCharts(){
     let e=0,c=0,ch=0;
     BIENS.filter(b=>b.e===ent.nom).forEach(b=>{
       const s=mdata[b.id]||{};
-      if(s.st!=='vac'&&s.enc!==undefined){e+=s.enc;c+=b.crd;ch+=b.chg;}
+      if(s.st!=='vac'&&s.enc!==undefined){e+=s.enc;c+=crdBien(b);ch+=b.chg;}
     });
     return e-c-ch;
   });
@@ -1903,14 +1912,14 @@ function renderHisto(){
 // ══════════════════════════════════
 function buildBiensTable(){
   document.getElementById('biens-tb').innerHTML=BIENS.map(b=>{
-    const net=b.loy-b.crd-b.chg;
+    const net=b.loy-crdBien(b)-b.chg;
     return `<tr>
       <td><b>${b.n}</b><br><small style="color:var(--mu);font-size:10px">${b.l||'Vacant'}</small></td>
       <td style="text-align:left">${b.a}</td>
       <td style="text-align:left;font-size:11px">${b.e}</td>
       <td style="text-align:left"><span class="bd bk" style="font-size:9.5px">${b.t}</span></td>
       <td class="pos">${fmt(b.loy)}</td>
-      <td class="${b.crd>0?'neg':''}">${b.crd>0?fmt(b.crd):'—'}</td>
+      <td class="${crdBien(b)>0?'neg':''}">${crdBien(b)>0?fmt(crdBien(b)):'—'}</td>
       <td class="${b.chg>0?'neu':''}">${b.chg>0?fmt(b.chg):'—'}</td>
       <td class="${net<0?'neg':net<100?'neu':'pos'}">${net>0?'+':''}${net} €</td>
       <td><span class="bd ${net<0?'br':net<100?'bo':'bg'}">${net<0?'⚠ Déficit':net<100?'Faible':'Rentable'}</span></td>
@@ -2213,6 +2222,8 @@ async function chargerCredits(){
   if(!error && data && data.length){
     CREDITS_DATA = data.map(c=>({id:c.id, bienId:c.bien_id, banque:c.banque, mens:c.mens, cap:c.cap, fin:c.fin, note:c.note}));
     if(document.getElementById('pg-credits')?.classList.contains('on')) buildCreditsPage();
+    if(document.getElementById('pg-biens')?.classList.contains('on')) buildBiensTable();
+    if(document.getElementById('pg-loyers')?.classList.contains('on')) buildLoyersPage();
   }
 }
 chargerCredits();
@@ -2233,7 +2244,7 @@ function saveCredit() {
   saveAllCredits();
   closeModal('mo-credit');
   buildCreditsPage();
-  toast('✅ Crédit ajouté');
+  toast('✅ Crédit ajouté — répercuté dans Mes Biens et les calculs');
 }
 
 
