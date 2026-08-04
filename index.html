@@ -1108,6 +1108,17 @@ let DD=JSON.parse(localStorage.getItem('immo3_d')||'{}');  // dépenses: {mois:[
   }
   if(document.getElementById('pg-depenses')?.classList.contains('on')) buildDepPage();
   updateSidebar();
+  // Rattrapage : reporte les dépenses récurrentes déjà saisies sur les mois suivants (une fois par appareil)
+  if(!localStorage.getItem('immo3_propage_v1')){
+    const n = propagerRecurrentes();
+    localStorage.setItem('immo3_propage_v1','1');
+    if(n){
+      toast(`🔁 Dépenses récurrentes reportées sur ${n} mois`);
+      if(document.getElementById('pg-depenses')?.classList.contains('on')) buildDepPage();
+      if(document.getElementById('pg-annuel')?.classList.contains('on')) buildAnnuelPage();
+      updateSidebar();
+    }
+  }
 }
 chargerDepenses();
 let H=JSON.parse(localStorage.getItem('immo3_h')||'[]');   // historique
@@ -1498,14 +1509,39 @@ function refreshDepStats(){
   set('dep-tf-v',fmt(tf));set('dep-eau-v',fmt(eau));set('dep-tra-v',fmt(tra));
 }
 
-async function syncDepenses(){
-  await sb.from('depenses').delete().eq('mois', CUR);
-  if(DD[CUR] && DD[CUR].length){
-    const lignes = DD[CUR].map(d=>({mois:CUR, cat:d.cat, bien:d.bien, lib:d.lib, mont:d.mont,date_dep:d.date||'', perio:d.perio||'', ref:d.ref||'', note:d.note||''}));
+async function syncDepensesMois(m){
+  await sb.from('depenses').delete().eq('mois', m);
+  if(DD[m] && DD[m].length){
+    const lignes = DD[m].map(d=>({mois:m, cat:d.cat, bien:d.bien, lib:d.lib, mont:d.mont,date_dep:d.date||'', perio:d.perio||'', ref:d.ref||'', note:d.note||''}));
     const { error } = await sb.from('depenses').insert(lignes);
     if(error) console.log('Erreur sync depenses:', error);
   }
- }
+}
+async function syncDepenses(){ await syncDepensesMois(CUR); }
+
+// ── Propagation des dépenses récurrentes (Mensuel : chaque mois / Trimestriel : tous les 3 mois) ──
+function propagerRecurrentes(){
+  const changed = new Set();
+  for(let m=0;m<11;m++){
+    (DD[m]||[]).forEach(d=>{
+      const step = d.perio==='Mensuel'?1:(d.perio==='Trimestriel'?3:0);
+      if(!step) return;
+      for(let t=m+step;t<12;t+=step){
+        if(!DD[t]) DD[t]=[];
+        const existe = DD[t].some(x=>x.lib===d.lib&&x.cat===d.cat&&x.bien===d.bien&&Math.abs((x.mont||0)-(d.mont||0))<0.01);
+        if(!existe){
+          DD[t].push({cat:d.cat,bien:d.bien,lib:d.lib,mont:d.mont,date:'',perio:d.perio,ref:d.ref||'',note:d.note||''});
+          changed.add(t);
+        }
+      }
+    });
+  }
+  if(changed.size){
+    ls('immo3_d',DD);
+    changed.forEach(t=>syncDepensesMois(t));
+  }
+  return changed.size;
+}
   function addDep(){
   const mont=parseFloat(document.getElementById('d-mont').value)||0;
   if(mont<=0){toast('⚠️ Montant requis');return;}
@@ -1525,7 +1561,12 @@ async function syncDepenses(){
   H.push({tp:'d',m:CUR,...dep});ls('immo3_h',H);
   resetDep();buildDepPage();updateSidebar();
   if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
-  toast('✅ Dépense ajoutée : '+dep.lib);
+  if(dep.perio==='Mensuel'||dep.perio==='Trimestriel'){
+    const n = propagerRecurrentes();
+    toast(`✅ ${dep.lib} ajoutée · 🔁 reportée sur ${n} mois suivant${n>1?'s':''} (${dep.perio.toLowerCase()})`);
+  } else {
+    toast('✅ Dépense ajoutée : '+dep.lib);
+  }
 }
 
 function resetDep(){['d-lib','d-mont','d-ref','d-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
@@ -1554,10 +1595,30 @@ function delDep(i){
   const filtered=allDeps.filter(d=>!cat||d.cat===cat);
   const target=filtered[i];
   const realIdx=allDeps.indexOf(target);
-  if(realIdx>=0)allDeps.splice(realIdx,1);
-  DD[CUR]=allDeps;ls('immo3_d',DD);
-  syncDepenses();
-  buildDepPage();updateSidebar();toast('🗑 Dépense supprimée');
+  if(realIdx<0) return;
+  const estRec = target.perio==='Mensuel'||target.perio==='Trimestriel';
+  let toutSupprimer = false;
+  if(estRec){
+    toutSupprimer = confirm(`"${target.lib}" est une dépense récurrente (${target.perio.toLowerCase()}).\n\nOK = supprimer ce mois-ci ET tous les mois suivants (la récurrence s'arrête)\nAnnuler = supprimer uniquement ce mois-ci`);
+  }
+  allDeps.splice(realIdx,1);
+  DD[CUR]=allDeps;
+  const changed = new Set([CUR]);
+  if(toutSupprimer){
+    const match = x=>x.lib===target.lib&&x.cat===target.cat&&x.bien===target.bien&&Math.abs((x.mont||0)-(target.mont||0))<0.01;
+    // Supprimer les occurrences des mois suivants
+    for(let t=CUR+1;t<12;t++){
+      if(DD[t]&&DD[t].some(match)){ DD[t]=DD[t].filter(x=>!match(x)); changed.add(t); }
+    }
+    // Neutraliser les originaux des mois précédents pour qu'ils ne se re-propagent pas
+    for(let t=0;t<CUR;t++){
+      (DD[t]||[]).forEach(x=>{ if(match(x)){ x.perio='Ponctuel'; changed.add(t); } });
+    }
+  }
+  ls('immo3_d',DD);
+  changed.forEach(t=>syncDepensesMois(t));
+  buildDepPage();updateSidebar();
+  toast(toutSupprimer?`🗑 "${target.lib}" supprimée + récurrence arrêtée`:'🗑 Dépense supprimée');
 }
 
 function updateTF(cb){
