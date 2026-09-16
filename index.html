@@ -1286,8 +1286,31 @@ function buildLoyersPage(){
     ]},
   ];
 
+  // ── Rattachement automatique des biens ajoutés après coup (absents des listes ci-dessus) ──
+  const nrm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ');
+  const GEN=['rue','avenue','av','bd','boulevard','place','pl','allee','les','des','de','du','la','le','et','sous','bois'];
+  const declares=new Set();
+  ENTITES.forEach(e=>e.immeubles.forEach(im=>im.ids.forEach(id=>declares.add(id))));
+  ENTITES.forEach(e=>{
+    const orphelins=BIENS.filter(b=>(b.e===e.nom||ENTITE_ALIAS[b.e]===e.nom)&&!declares.has(b.id));
+    if(!orphelins.length) return;
+    const reste=[];
+    orphelins.forEach(b=>{
+      const nb=nrm(b.a);
+      let best=null,bestSc=0;
+      e.immeubles.forEach(im=>{
+        const hay=nrm(im.adresse+' '+im.ids.map(id=>{const x=BIENS.find(bb=>bb.id===id);return x?x.a:'';}).join(' '));
+        const toks=[...new Set(hay.split(/\s+/).filter(t=>t&&!GEN.includes(t)&&(t.length>=3||/^\d+$/.test(t))))];
+        const sc=toks.filter(t=>nb.includes(t)).length;
+        if(sc>bestSc){bestSc=sc;best=im;}
+      });
+      if(best) best.ids.push(b.id); else reste.push(b.id);
+    });
+    if(reste.length) e.immeubles.push({adresse:'🏠 Autres biens', ids:reste});
+  });
+
   ENTITES.forEach(ent=>{
-    const biensEnt=BIENS.filter(b=>b.e===ent.nom);
+    const biensEnt=BIENS.filter(b=>b.e===ent.nom||ENTITE_ALIAS[b.e]===ent.nom);
     if(!biensEnt.length) return;
 
     // Calcul stats entité
