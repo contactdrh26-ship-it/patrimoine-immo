@@ -2640,6 +2640,34 @@ function downloadPDF(){
   html2pdf().set(opt).from(el).save().catch(e=>{toast('❌ Erreur PDF');console.log('Erreur html2pdf:',e);});
 }
 // ── Envoi email via Resend (PDF généré côté serveur) ─────────────────
+// ── Envoi via EmailJS (compte Gmail contactdrh26) — remplace Resend qui bloquait les envois ──
+const EMAILJS = { service:'service_l0wg71i', template:'template_etij2b7', publicKey:'egq016Eb6yWUhZ03o' };
+async function envoyerViaEmailJS(to, subject, html, fromName){
+  const payload = tpl => ({
+    service_id: EMAILJS.service,
+    template_id: tpl,
+    user_id: EMAILJS.publicKey,
+    template_params: { to_email: to, subject: subject, message: html, name: fromName||'Gestion Locative', email: 'contactdrh26@gmail.com' }
+  });
+  let resp = await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload(EMAILJS.template))
+  });
+  if(!resp.ok){
+    const txt = await resp.text();
+    // Si l'ID du template est incomplet, retente avec le préfixe standard
+    if(/template/i.test(txt) && !EMAILJS.template.startsWith('template_')){
+      resp = await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload('template_'+EMAILJS.template))
+      });
+      if(resp.ok){ EMAILJS.template = 'template_'+EMAILJS.template; return {ok:true}; }
+    }
+    return {ok:false, error:txt};
+  }
+  return {ok:true};
+}
+
 async function sendSingleQuittance(bienId){
   const b = BIENS.find(x=>x.id===bienId);
   if(!b){toast('⚠️ Bien introuvable');return;}
@@ -2686,23 +2714,12 @@ async function sendSingleQuittance(bienId){
   const fileName = `Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_${ANNEE_APP}.pdf`;
   toast('📤 Envoi en cours...');
   try {
-    const resp = await fetch('/api/send-email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        to: email,
-        from: EMAIL_CONFIG.from || 'onboarding@resend.dev',
-        subject: subj,
-        html: mailHtml,
-        quittance: quittance,
-        pdfFilename: fileName
-      })
-    });
-    const data = await resp.json();
-    if(resp.ok && data.success){
+    const quittanceHtml = genQuittanceHTML(b);
+    const r = await envoyerViaEmailJS(email, subj, mailHtml + '<br><hr><br>' + quittanceHtml, BL.nom);
+    if(r.ok){
       toast('✅ Quittance envoyée à '+email);
     } else {
-      toast('❌ Erreur : '+(data.error||'Vérifiez la configuration'));
+      toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
     }
   } catch(e){
     toast('❌ Erreur réseau : '+e.message);
@@ -2769,12 +2786,8 @@ async function sendRelance(b, joursRetard){
       </div>
     </div>`;
   try {
-    await fetch('/api/send-email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({to:LOCATAIRE_EMAILS[b.id],from:EMAIL_CONFIG.from||'onboarding@resend.dev',subject:subj,html:html})
-    });
-    toast('⚠️ Relance envoyée à '+b.l+' ('+joursRetard+'j de retard)');
+    const r = await envoyerViaEmailJS(LOCATAIRE_EMAILS[b.id], subj, html, BAILLEUR.nom||'Le Bailleur');
+    if(r.ok) toast('⚠️ Relance envoyée à '+b.l+' ('+joursRetard+'j de retard)');
   } catch(e){}
 }
 
@@ -2994,24 +3007,10 @@ async function sendAttestationEmail(){
 
   toast('📤 Envoi en cours...');
   try {
-    const resp = await fetch('/api/send-email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        to: email,
-        nom: b.l||b.n,
-        mois: 'Fin de location',
-        annee: String(new Date().getFullYear()),
-        html: `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><hr><br>${htmlContent}`
-      })
-    });
-    if(resp.ok){
-      const data = await resp.json();
-      if(data.success) toast('✅ Attestation envoyée à '+email);
-      else toast('Erreur: '+(data.error||'Vérifiez config'));
-    } else {
-      toast('Erreur envoi email');
-    }
+    const r = await envoyerViaEmailJS(email, 'Attestation de fin de location — '+(BL.nom||'Bailleur'),
+      `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><hr><br>${htmlContent}`, BL.nom);
+    if(r.ok) toast('✅ Attestation envoyée à '+email);
+    else toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
   } catch(e){
     toast('❌ Erreur réseau : '+e.message);
   }
@@ -3139,19 +3138,11 @@ async function testEmail(){
   saveEmailConfig();
   toast('📤 Envoi du test...');
   try {
-    const resp = await fetch('/api/send-email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        to: BAILLEUR.email||'contactdrh26@gmail.com',
-        from: EMAIL_CONFIG.from||'onboarding@resend.dev',
-        subject: 'Test Dashboard Immobilier',
-        html: '<h2>Test Dashboard Immobilier</h2><p>Configuration email fonctionnelle !</p>'
-      })
-    });
-    const d = await resp.json();
-    if(resp.ok&&d.success) toast('✅ Email de test envoyé !');
-    else toast('❌ Erreur : '+(d.error||'Vérifiez la configuration'));
+    const r = await envoyerViaEmailJS(BAILLEUR.email||'contactdrh26@gmail.com',
+      'Test Dashboard Immobilier',
+      '<h2>Test Dashboard Immobilier</h2><p>Configuration email fonctionnelle !</p>');
+    if(r.ok) toast('✅ Email de test envoyé !');
+    else toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
   } catch(e){ toast('❌ Erreur : '+e.message); }
 }
 
