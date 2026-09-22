@@ -754,6 +754,13 @@ Cordialement,
             Objet : "⚠️ Relance - Loyer impayé - {mois} {annee}"
           </div>
         </div>
+        <div style="background:#eefaf2;border:1px solid #bfe8cf;border-radius:8px;padding:12px 14px;margin-top:12px;display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="auto-q-toggle" style="width:16px;height:16px;cursor:pointer;" onchange="localStorage.setItem('immo_auto_q',this.checked?'on':'off');toast(this.checked?'📧 Envoi automatique des quittances : activé':'Envoi automatique des quittances : désactivé');">
+          <label for="auto-q-toggle" style="font-size:12px;color:#155e35;cursor:pointer;line-height:1.5;">
+            <b>Envoi automatique des quittances</b> — dès qu'un loyer est marqué <b>Encaissé</b> puis enregistré (💾),
+            la quittance part immédiatement au locataire (une seule fois par mois et par locataire).
+          </label>
+        </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--brd);">
           <button class="btn btn-s btn-sm" onclick="testEmail()">🧪 Email de test</button>
           <button class="btn btn-p btn-sm" onclick="saveEmailConfig()">💾 Enregistrer</button>
@@ -1505,6 +1512,7 @@ function saveLoyers(){
   updateSidebar();buildMoisBtns();
   if(document.getElementById('pg-annuel').classList.contains('on'))buildAnnuelPage();
   toast('✅ Loyers de '+MN[CUR]+' enregistrés');
+  autoEnvoyerQuittances();
 }
 
 // ══════════════════════════════════
@@ -2668,6 +2676,26 @@ async function envoyerViaEmailJS(to, subject, html, fromName){
   return {ok:true};
 }
 
+// ── Envoi automatique des quittances à l'encaissement ──
+let QSENT = JSON.parse(localStorage.getItem('immo_q_sent')||'{}'); // {"annee-mois-bienId":true}
+function autoQuittanceActive(){ return localStorage.getItem('immo_auto_q')!=='off'; }
+async function autoEnvoyerQuittances(){
+  if(!autoQuittanceActive()) return;
+  const aEnvoyer = BIENS.filter(b=>{
+    const s=(LD[CUR]||{})[b.id];
+    const cle=`${ANNEE_APP}-${CUR}-${b.id}`;
+    return s && s.st==='enc' && !QSENT[cle] && LOCATAIRE_EMAILS[b.id];
+  });
+  if(!aEnvoyer.length) return;
+  toast(`📧 Envoi automatique de ${aEnvoyer.length} quittance${aEnvoyer.length>1?'s':''}...`);
+  for(const b of aEnvoyer){
+    await sendSingleQuittance(b.id);
+    QSENT[`${ANNEE_APP}-${CUR}-${b.id}`]=true;
+    localStorage.setItem('immo_q_sent',JSON.stringify(QSENT));
+    await new Promise(r=>setTimeout(r,600)); // espacement entre envois
+  }
+}
+
 async function sendSingleQuittance(bienId){
   const b = BIENS.find(x=>x.id===bienId);
   if(!b){toast('⚠️ Bien introuvable');return;}
@@ -3120,6 +3148,8 @@ function loadEmailConfig(){
   if(cfg.from)  document.getElementById('resend-from').value   = cfg.from;
   if(cfg.subject) document.getElementById('resend-subject').value = cfg.subject;
   if(cfg.body)  document.getElementById('resend-body').value   = cfg.body;
+  const tq = document.getElementById('auto-q-toggle');
+  if(tq) tq.checked = autoQuittanceActive();
 }
 
 function saveEmailConfig(){
