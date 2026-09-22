@@ -2679,20 +2679,34 @@ async function envoyerViaEmailJS(to, subject, html, fromName){
 // ── Envoi automatique des quittances à l'encaissement ──
 let QSENT = JSON.parse(localStorage.getItem('immo_q_sent')||'{}'); // {"annee-mois-bienId":true}
 function autoQuittanceActive(){ return localStorage.getItem('immo_auto_q')!=='off'; }
+let _autoQEnCours = false;
 async function autoEnvoyerQuittances(){
   if(!autoQuittanceActive()) return;
+  if(_autoQEnCours){ toast('⏳ Envoi de quittances déjà en cours, patientez...'); return; }
   const aEnvoyer = BIENS.filter(b=>{
     const s=(LD[CUR]||{})[b.id];
     const cle=`${ANNEE_APP}-${CUR}-${b.id}`;
     return s && s.st==='enc' && !QSENT[cle] && LOCATAIRE_EMAILS[b.id];
   });
   if(!aEnvoyer.length) return;
-  toast(`📧 Envoi automatique de ${aEnvoyer.length} quittance${aEnvoyer.length>1?'s':''}...`);
-  for(const b of aEnvoyer){
-    await sendSingleQuittance(b.id);
-    QSENT[`${ANNEE_APP}-${CUR}-${b.id}`]=true;
-    localStorage.setItem('immo_q_sent',JSON.stringify(QSENT));
-    await new Promise(r=>setTimeout(r,600)); // espacement entre envois
+  if(aEnvoyer.length>1){
+    const noms = aEnvoyer.map(b=>b.l||b.n).join(', ');
+    if(!confirm(`📧 ${aEnvoyer.length} quittances de ${MN[CUR]} vont être envoyées automatiquement à :\n\n${noms}\n\nConfirmer l'envoi ?`)) return;
+  }
+  _autoQEnCours = true;
+  try {
+    toast(`📧 Envoi automatique de ${aEnvoyer.length} quittance${aEnvoyer.length>1?'s':''}...`);
+    let ok=0;
+    for(const b of aEnvoyer){
+      await sendSingleQuittance(b.id);
+      QSENT[`${ANNEE_APP}-${CUR}-${b.id}`]=true;
+      localStorage.setItem('immo_q_sent',JSON.stringify(QSENT));
+      ok++;
+      await new Promise(r=>setTimeout(r,600)); // espacement entre envois
+    }
+    toast(`✅ Terminé : ${ok} quittance${ok>1?'s':''} de ${MN[CUR]} envoyée${ok>1?'s':''}`);
+  } finally {
+    _autoQEnCours = false;
   }
 }
 
