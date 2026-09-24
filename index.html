@@ -333,6 +333,7 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
     <div class="sb-a" data-page="credits" onclick="goPage('credits',this)"><span class="ic">🏦</span><span>Crédits</span></div>
     <div class="sb-a" data-page="historique" onclick="goPage('historique',this)"><span class="ic">📁</span><span>Historique</span></div>
     <div class="sb-a" data-page="biens" onclick="goPage('biens',this)"><span class="ic">🏘️</span><span>Mes biens</span></div>
+    <div class="sb-a" data-page="documents" onclick="goPage('documents',this)"><span class="ic">📎</span><span>Documents</span></div>
   </nav>
   <div class="sb-bot">
     <div class="sb-mini">
@@ -629,6 +630,49 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
         <tbody id="histo-tb"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- ════════════════════════════
+       PAGE : DOCUMENTS
+  ════════════════════════════ -->
+  <div class="pg" id="pg-documents">
+    <div class="fbox">
+      <div class="fbox-t">📎 Ajouter un document</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.6;">
+        Taxes foncières, assurances, baux, diagnostics... Les documents sont stockés en ligne et
+        accessibles depuis tous vos appareils (et par votre assistante).
+      </div>
+      <div class="fg2" style="gap:12px;margin-bottom:12px;">
+        <div class="fg"><label>Catégorie</label>
+          <select id="doc-cat" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+            <option value="tf">🏛️ Taxe foncière</option>
+            <option value="assurance">🛡️ Assurance</option>
+            <option value="bail">📄 Bail</option>
+            <option value="diagnostic">🔬 Diagnostic</option>
+            <option value="travaux">🔧 Facture travaux</option>
+            <option value="autre">📎 Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label>Année</label>
+          <input type="number" id="doc-annee" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+        </div>
+      </div>
+      <div class="fg2" style="gap:12px;margin-bottom:12px;">
+        <div class="fg"><label>Concerne (entité, immeuble ou bien)</label>
+          <select id="doc-concerne" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;"></select>
+        </div>
+        <div class="fg"><label>Précision (optionnel — ex: lots 101 à 110)</label>
+          <input type="text" id="doc-prec" placeholder="Ex: lots 101 à 110, Varagnat + Chemin de Fer..." style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--bg);outline:none;width:100%;">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:12px;"><label>Fichier (PDF, image...)</label>
+        <input type="file" id="doc-file" accept=".pdf,.jpg,.jpeg,.png,.webp" style="border:1px solid var(--brd);border-radius:7px;padding:7px 10px;font-size:12px;background:var(--bg);outline:none;width:100%;">
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--brd);">
+        <button class="btn btn-p btn-sm" id="doc-upload-btn" onclick="uploadDocument()">📤 Enregistrer le document</button>
+      </div>
+    </div>
+    <div id="docs-list" style="margin-top:20px;"></div>
   </div>
 
   <!-- ════════════════════════════
@@ -1135,7 +1179,7 @@ let CUR=new Date().getMonth(); // mois courant
 // ══════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════
-const PAGE_TITLES={annuel:'📊 Vue Annuelle '+ANNEE_APP,loyers:'🏠 Loyers du Mois',depenses:'💸 Dépenses du Mois',resultat:'📈 Résultat du Mois',historique:'📁 Historique',biens:'🏘️ Mes Biens'};
+const PAGE_TITLES={annuel:'📊 Vue Annuelle '+ANNEE_APP,loyers:'🏠 Loyers du Mois',depenses:'💸 Dépenses du Mois',resultat:'📈 Résultat du Mois',historique:'📁 Historique',biens:'🏘️ Mes Biens',documents:'📎 Documents'};
 
 function goPage(p,el){
   document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
@@ -1151,6 +1195,7 @@ function goPage(p,el){
   if(p==='annuel') buildAnnuelPage();
   if(p==='credits') buildCreditsPage();
   if(p==='quittances') buildQuittancesPage();
+  if(p==='documents') buildDocumentsPage();
   closeSidebar();
 }
 
@@ -3154,6 +3199,109 @@ function saveBailleur(){
   closeModal('mo-bailleur');
   buildQuittancesPage();
   toast('✅ Informations bailleur enregistrées');
+}
+
+// ── Documents (Supabase Storage) ────────────────────────────────────
+const DOC_BUCKET = 'documents';
+const DOC_CATS = {tf:'🏛️ Taxes foncières', assurance:'🛡️ Assurances', bail:'📄 Baux', diagnostic:'🔬 Diagnostics', travaux:'🔧 Factures travaux', autre:'📎 Autres'};
+function docSlug(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'doc';
+}
+function initDocConcerne(){
+  const sel = document.getElementById('doc-concerne');
+  if(!sel || sel.options.length) return;
+  const ents = ['Bismuth Jacques','Sophie Bismuth','SCI SJ Immo','SCI VB Immo','SCI BOBI Immo','SCI JML Immo'];
+  const imms = [
+    'Immeuble Fauvettes (Montfermeil)',
+    'Immeuble Chemin de Fer (Bondy)',
+    'Immeuble Varagnat (Bondy)',
+    'Immeuble Pasteur (Gagny)',
+    'Immeuble PSB Pasteur (Pavillons)',
+    'Immeuble Albert Thomas (Pavillons)',
+    'Immeuble Joffre (Drancy)',
+    'Immeuble Ville Neuve (Aulnay)'
+  ];
+  let html = '<option value="General">Général</option>';
+  html += '<optgroup label="── Entités ──">'+ents.map(e=>`<option>${e}</option>`).join('')+'</optgroup>';
+  html += '<optgroup label="── Immeubles (TF multi-biens) ──">'+imms.map(i=>`<option>${i}</option>`).join('')+'</optgroup>';
+  html += '<optgroup label="── Biens individuels ──">'+BIENS.map(b=>`<option value="${b.e} · ${b.n}">${b.e} — ${b.n}</option>`).join('')+'</optgroup>';
+  sel.innerHTML = html;
+  const an = document.getElementById('doc-annee');
+  if(an && !an.value) an.value = ANNEE_APP;
+}
+async function uploadDocument(){
+  const fileInput = document.getElementById('doc-file');
+  const file = fileInput.files[0];
+  if(!file){ toast('⚠️ Choisissez un fichier'); return; }
+  if(file.size > 45*1024*1024){ toast('⚠️ Fichier trop lourd (45 Mo max)'); return; }
+  const cat = v('doc-cat'), annee = v('doc-annee')||ANNEE_APP, concerne = v('doc-concerne')||'General';
+  const prec = v('doc-prec');
+  const ext = (file.name.split('.').pop()||'pdf').toLowerCase();
+  const path = `${cat}/${annee}_${docSlug(concerne)}${prec?'--'+docSlug(prec):''}__${docSlug(file.name.replace(/\.[^.]+$/,''))}.${ext}`;
+  const btn = document.getElementById('doc-upload-btn');
+  btn.disabled = true; btn.textContent = '⏳ Envoi en cours...';
+  try {
+    const { error } = await sb.storage.from(DOC_BUCKET).upload(path, file, { upsert:true, contentType:file.type||undefined });
+    if(error) throw error;
+    toast('✅ Document enregistré');
+    fileInput.value = ''; const dp=document.getElementById('doc-prec'); if(dp) dp.value='';
+    buildDocumentsPage();
+  } catch(e){
+    const msg = String(e.message||e);
+    if(/bucket/i.test(msg)) toast('❌ Le stockage "documents" n\'existe pas encore dans Supabase (voir configuration)');
+    else toast('❌ Erreur : '+msg.slice(0,100));
+    console.log('Upload doc:', e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Enregistrer le document';
+  }
+}
+async function buildDocumentsPage(){
+  initDocConcerne();
+  const cont = document.getElementById('docs-list');
+  cont.innerHTML = '<div style="font-size:12px;color:var(--mu);padding:10px;">⏳ Chargement des documents...</div>';
+  let html = '', total = 0, erreurBucket = false;
+  for(const [cat, label] of Object.entries(DOC_CATS)){
+    try {
+      const { data, error } = await sb.storage.from(DOC_BUCKET).list(cat, { limit:200, sortBy:{column:'name', order:'desc'} });
+      if(error){ if(/bucket/i.test(error.message||'')) erreurBucket = true; continue; }
+      const files = (data||[]).filter(f=>f.name && !f.name.startsWith('.'));
+      if(!files.length) continue;
+      total += files.length;
+      html += `<div class="fbox" style="margin-bottom:16px;"><div class="fbox-t">${label} <span style="font-weight:400;color:var(--mu);font-size:11px;">(${files.length})</span></div>`;
+      files.forEach(f=>{
+        const m = f.name.match(/^(\d{4})_(.+?)__(.+)$/);
+        const annee = m?m[1]:'', qui = m?m[2].replace(/--/g,' · ').replace(/-/g,' '):f.name, nom = m?m[3]:'';
+        const ko = f.metadata&&f.metadata.size ? Math.round(f.metadata.size/1024)+' Ko' : '';
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--brd);font-size:12px;">
+          <span style="font-size:16px;">📄</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;text-transform:capitalize;">${qui} ${annee?'· '+annee:''}</div>
+            <div style="color:var(--mu);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nom} ${ko?'· '+ko:''}</div>
+          </div>
+          <button class="btn btn-s btn-sm" onclick="openDocument('${cat}/${f.name}')">👁 Ouvrir</button>
+          <button class="btn btn-sm" style="background:none;border:1px solid var(--brd);border-radius:7px;padding:4px 8px;cursor:pointer;color:var(--rd);" onclick="deleteDocument('${cat}/${f.name}')">🗑</button>
+        </div>`;
+      });
+      html += '</div>';
+    } catch(e){ console.log('List docs', cat, e); }
+  }
+  if(erreurBucket){
+    cont.innerHTML = '<div class="fbox" style="border-left:3px solid var(--or);"><div style="font-size:12px;line-height:1.7;">⚠️ Le stockage <b>"documents"</b> n\'est pas encore créé dans Supabase.<br>Supabase → Storage → New bucket → nom : <b>documents</b> → cochez <b>Public</b> → Save (+ policies, voir instructions).</div></div>';
+    return;
+  }
+  cont.innerHTML = html || '<div class="fbox" style="text-align:center;color:var(--mu);font-size:12px;padding:24px;">Aucun document pour l\'instant — ajoutez votre première taxe foncière ci-dessus ! 📎</div>';
+}
+function openDocument(path){
+  const { data } = sb.storage.from(DOC_BUCKET).getPublicUrl(path);
+  if(data&&data.publicUrl) window.open(data.publicUrl,'_blank');
+}
+async function deleteDocument(path){
+  if(!confirm('Supprimer définitivement ce document ?')) return;
+  const { error } = await sb.storage.from(DOC_BUCKET).remove([path]);
+  if(error){ toast('❌ Erreur suppression'); return; }
+  toast('🗑 Document supprimé');
+  buildDocumentsPage();
 }
 
 function loadEmailConfig(){
