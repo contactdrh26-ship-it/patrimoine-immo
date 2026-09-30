@@ -668,6 +668,31 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
       <div class="fg" style="margin-bottom:12px;"><label>Fichier (PDF, image...)</label>
         <input type="file" id="doc-file" accept=".pdf,.jpg,.jpeg,.png,.webp" style="border:1px solid var(--brd);border-radius:7px;padding:7px 10px;font-size:12px;background:var(--bg);outline:none;width:100%;">
       </div>
+      <div style="background:#f0f5fc;border:1px solid #d5e3f5;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--bl);margin-bottom:8px;">💶 Enregistrer aussi le montant (optionnel)</div>
+        <div class="fg2" style="gap:12px;">
+          <div class="fg"><label>Montant total (€) — crée la dépense automatiquement</label>
+            <input type="number" id="doc-mont" placeholder="Ex: 2450" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:#fff;outline:none;width:100%;">
+          </div>
+          <div class="fg"><label>Mois d'imputation de la dépense</label>
+            <select id="doc-mois" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:#fff;outline:none;width:100%;"></select>
+          </div>
+        </div>
+      </div>
+      <div id="doc-tf-block" style="display:none;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:4px;">🏛️ Refacturer la TF à un local commercial (optionnel)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:8px;line-height:1.5;">
+          Le montant saisi sera ajouté à la <b>prochaine quittance</b> et au <b>prochain avis d'échéance</b> de ce locataire, puis remis à zéro automatiquement une fois la quittance envoyée.
+        </div>
+        <div class="fg2" style="gap:12px;">
+          <div class="fg"><label>Local commercial concerné</label>
+            <select id="doc-tfr-bien" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:#fff;outline:none;width:100%;"></select>
+          </div>
+          <div class="fg"><label>Montant refacturé (€)</label>
+            <input type="number" id="doc-tfr-mont" placeholder="Ex: 850" style="border:1px solid var(--brd);border-radius:7px;padding:8px 10px;font-size:13px;background:#fff;outline:none;width:100%;">
+          </div>
+        </div>
+      </div>
       <div style="display:flex;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--brd);">
         <button class="btn btn-p btn-sm" id="doc-upload-btn" onclick="uploadDocument()">📤 Enregistrer le document</button>
       </div>
@@ -970,6 +995,7 @@ Cordialement,
       <div class="fg"><label>Loyer mensuel (€)</label><input id="nb-loy" type="number" placeholder="0"></div>
       <div class="fg"><label>🔑 Date d'entrée du locataire</label><input id="nb-din" type="date"></div>
       <div class="fg"><label>🏁 Date de sortie (fin de bail)</label><input id="nb-dout" type="date"></div>
+      <div class="fg"><label>🏛️ TF à refacturer (€) — locaux commerciaux</label><input id="nb-tfr" type="number" placeholder="0"></div>
       <div class="fg"><label>Crédit mensuel (€)</label><input id="nb-crd" type="number" placeholder="0"></div>
       <div class="fg"><label>Charges mensuelles (€)</label><input id="nb-chg" type="number" placeholder="0"></div>
     </div>
@@ -1033,6 +1059,17 @@ function loyerAttendu(b,m){
   const dj=joursOccupes(b,m);
   if(dj>=daysIn) return b.loy;
   return Math.round(b.loy*dj/daysIn);
+}
+// ── Masquage des locataires sortis ──────────────────────────────────
+// Un bien est masqué pour le mois m si : bail terminé AVANT le début du mois,
+// rien d'attendu, et aucune saisie enregistrée ce mois-là.
+// L'historique des mois où il était présent reste intact (bilan annuel).
+function estMasque(b,m){
+  const s=(LD[m]||{})[b.id];
+  if(s && (s.enc>0 || (s.st&&s.st!=='vac'&&s.st!=='att'))) return false; // données saisies → on garde
+  if(loyerAttendu(b,m)>0) return false;                                  // occupé (même partiellement) → visible
+  if(!b.dout) return false;                                              // pas de sortie enregistrée → visible (bien à relouer)
+  return new Date(b.dout) < new Date(ANNEE_APP,m,1);                     // sorti avant ce mois → masqué
 }
 // Loyers prévus par mois — calculés depuis les biens (fallback avant chargement Supabase)
 let PREV=[38178,38178,38878,38187,43928,43928,43928,43928,43078,43928,43928,43928];
@@ -1108,7 +1145,7 @@ chargerBiens();
 async function saveBiens(){
   refreshPrev();
   let { error } = await sb.from('biens').upsert(
-    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null}))
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null, tf_refac:b.tf_refac||null}))
   );
   if(error && (error.message||'').includes('column')){
     // Colonnes din/dout pas encore créées dans Supabase → sauvegarde sans les dates
@@ -1362,13 +1399,13 @@ function buildLoyersPage(){
   });
 
   ENTITES.forEach(ent=>{
-    const biensEnt=BIENS.filter(b=>b.e===ent.nom||ENTITE_ALIAS[b.e]===ent.nom);
+    const biensEnt=BIENS.filter(b=>(b.e===ent.nom||ENTITE_ALIAS[b.e]===ent.nom)&&!estMasque(b,CUR));
     if(!biensEnt.length) return;
 
     // Calcul stats entité
     let loyTotal=0,encTotal=0;
     biensEnt.forEach(b=>{
-      loyTotal+=b.loy;
+      loyTotal+=loyerAttendu(b,CUR);
       const s=mdata[b.id]||{};
       if(s.enc!==undefined) encTotal+=s.enc;
     });
@@ -1392,12 +1429,12 @@ function buildLoyersPage(){
 
     // Immeubles de cette entité
     ent.immeubles.forEach(imm=>{
-      const biensImm=BIENS.filter(b=>imm.ids.includes(b.id));
+      const biensImm=BIENS.filter(b=>imm.ids.includes(b.id)&&!estMasque(b,CUR));
       if(!biensImm.length) return;
 
       let immLoy=0,immEnc=0;
       biensImm.forEach(b=>{
-        immLoy+=b.loy;
+        immLoy+=loyerAttendu(b,CUR);
         const s=mdata[b.id]||{};
         if(s.enc!==undefined) immEnc+=s.enc;
       });
@@ -2069,7 +2106,7 @@ function buildBiensTable(){
 
   function openAddBien(){
   _editBienId = null;
-  ['nb-n','nb-a','nb-l','nb-loy','nb-crd','nb-chg','nb-din','nb-dout'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['nb-n','nb-a','nb-l','nb-loy','nb-crd','nb-chg','nb-din','nb-dout','nb-tfr'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const titre = document.querySelector('#mo-bien .mo-title');
   if(titre) titre.childNodes[0].textContent = '🏠 Ajouter un Bien ';
   openModal('mo-bien');
@@ -2088,6 +2125,7 @@ function openEditBien(id){
   document.getElementById('nb-chg').value = b.chg||0;
   document.getElementById('nb-din').value = b.din||'';
   document.getElementById('nb-dout').value = b.dout||'';
+  document.getElementById('nb-tfr').value = b.tf_refac||'';
   // Changer le titre et le bouton du modal en mode "modification"
   const titre = document.querySelector('#mo-bien .mo-title');
   if(titre) titre.childNodes[0].textContent = '✏️ Modifier le bien ';
@@ -2109,6 +2147,7 @@ function addBien(){
       b.chg = pf('nb-chg');
       b.din = v('nb-din')||null;
       b.dout = v('nb-dout')||null;
+      b.tf_refac = pf('nb-tfr')||null;
     }
     _editBienId = null;
     saveBiens();
@@ -2119,7 +2158,7 @@ function addBien(){
     return;
   }
   // Mode ajout (comportement d'origine)
-  BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg'),din:v('nb-din')||null,dout:v('nb-dout')||null});
+  BIENS.push({id:BIENS.length+1,n:v('nb-n')||'Nouveau',a:v('nb-a'),e:v('nb-e'),t:v('nb-t'),l:v('nb-l'),loy:pf('nb-loy'),crd:pf('nb-crd'),chg:pf('nb-chg'),din:v('nb-din')||null,dout:v('nb-dout')||null,tf_refac:pf('nb-tfr')||null});
   saveBiens();
   populateBienSelect();closeModal('mo-bien');buildBiensTable();toast('✅ Bien ajouté');
 }
@@ -2457,7 +2496,8 @@ function buildQuittancesPage(){
 
   const entites = [...new Set(BIENS.map(b=>b.e))];
   entites.forEach(entNom=>{
-    const biensEnt = BIENS.filter(b=>b.e===entNom);
+    const biensEnt = BIENS.filter(b=>b.e===entNom&&!estMasque(b,CUR));
+    if(!biensEnt.length) return;
     const col = ENT_COLORS[entNom]||'#374151';
 
     const hdr = document.createElement('div');
@@ -2585,8 +2625,9 @@ function genQuittanceHTML(b){
           <tr><td>Bailleur</td><td>${BL.nom}${BL.siret?' · SIRET : '+BL.siret:''}</td></tr>
           <tr><td>Bien loué</td><td>${b.n}</td></tr>
           <tr><td>Adresse du bien</td><td>${b.a}</td></tr>
-          <tr><td>Loyer hors charges</td><td>${(enc - b.chg).toLocaleString('fr-FR')} €</td></tr>
+          <tr><td>Loyer hors charges</td><td>${(enc - b.chg - (b.tf_refac||0)).toLocaleString('fr-FR')} €</td></tr>
           <tr><td>Charges</td><td>${b.chg.toLocaleString('fr-FR')} €</td></tr>
+          ${b.tf_refac>0?`<tr><td>Taxe foncière (refacturation)</td><td>${(b.tf_refac||0).toLocaleString('fr-FR')} €</td></tr>`:''}
           <tr><td>Total encaissé</td><td>${enc.toLocaleString('fr-FR')} €</td></tr>
           <tr><td>Période</td><td>Du 1er au 30/31 ${moisNom} ${annee}</td></tr>
           <tr><td>Date de paiement</td><td>${date}</td></tr>
@@ -2805,6 +2846,11 @@ async function sendSingleQuittance(bienId){
     const r = await envoyerViaEmailJS(email, subj, mailHtml + '<br><hr><br>' + quittanceHtml, BL.nom);
     if(r.ok){
       toast('✅ Quittance envoyée à '+email);
+      if(b.tf_refac>0){
+        b.tf_refac = null;
+        saveBiens();
+        toast('🏛️ TF refacturée incluse dans cette quittance — remise à zéro pour les prochaines');
+      }
     } else {
       toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
     }
@@ -3229,6 +3275,23 @@ function initDocConcerne(){
   sel.innerHTML = html;
   const an = document.getElementById('doc-annee');
   if(an && !an.value) an.value = ANNEE_APP;
+  const dm = document.getElementById('doc-mois');
+  if(dm && !dm.options.length){
+    dm.innerHTML = MS.map((m,i)=>`<option value="${i}"${i===CUR?' selected':''}>${m} ${ANNEE_APP}</option>`).join('');
+  }
+  const tb = document.getElementById('doc-tfr-bien');
+  if(tb && !tb.options.length){
+    const locaux = BIENS.filter(b=>(b.t||'').toLowerCase().includes('commercial'));
+    tb.innerHTML = '<option value="">— Ne pas refacturer —</option>'+
+      locaux.map(b=>`<option value="${b.id}">${b.l||b.n} · ${b.a||''}</option>`).join('');
+  }
+  const dc = document.getElementById('doc-cat');
+  if(dc && !dc.dataset.wired){ dc.dataset.wired='1'; dc.addEventListener('change', toggleDocTF); }
+  toggleDocTF();
+}
+function toggleDocTF(){
+  const blk = document.getElementById('doc-tf-block');
+  if(blk) blk.style.display = v('doc-cat')==='tf' ? 'block' : 'none';
 }
 async function uploadDocument(){
   const fileInput = document.getElementById('doc-file');
@@ -3244,8 +3307,40 @@ async function uploadDocument(){
   try {
     const { error } = await sb.storage.from(DOC_BUCKET).upload(path, file, { upsert:true, contentType:file.type||undefined });
     if(error) throw error;
-    toast('✅ Document enregistré');
+    let msg = '✅ Document enregistré';
+
+    // ── Création automatique de la dépense si un montant est saisi ──
+    const mont = parseFloat(v('doc-mont'))||0;
+    if(mont > 0){
+      const CAT_MAP = {tf:'tf', assurance:'assurance', travaux:'travaux', bail:'divers', diagnostic:'divers', autre:'divers'};
+      const LIB_MAP = {tf:'Taxe foncière', assurance:'Assurance', travaux:'Travaux', bail:'Bail', diagnostic:'Diagnostic', autre:'Document'};
+      const mois = parseInt(v('doc-mois')); const moisOk = isNaN(mois)?CUR:mois;
+      if(!DD[moisOk]) DD[moisOk]=[];
+      DD[moisOk].push({cat:CAT_MAP[cat]||'divers', bien:concerne, lib:`${LIB_MAP[cat]||'Document'} ${concerne} ${annee}`, mont:mont, date:'', perio:'Annuel', ref:'', note:'📎 depuis Documents'+(prec?' · '+prec:'')});
+      ls('immo3_d',DD);
+      syncDepensesMois(moisOk);
+      updateSidebar();
+      if(document.getElementById('pg-depenses')?.classList.contains('on')) buildDepPage();
+      msg += ` · 💶 dépense de ${mont.toLocaleString('fr-FR')} € créée en ${MS[moisOk]}`;
+    }
+
+    // ── Refacturation TF au local commercial ──
+    const tfrBienId = parseInt(v('doc-tfr-bien'))||0;
+    const tfrMont = parseFloat(v('doc-tfr-mont'))||0;
+    if(cat==='tf' && tfrBienId && tfrMont>0){
+      const bl = BIENS.find(x=>x.id===tfrBienId);
+      if(bl){
+        bl.tf_refac = tfrMont;
+        await saveBiens();
+        msg += ` · 🏛️ ${tfrMont.toLocaleString('fr-FR')} € seront ajoutés à la prochaine quittance de ${bl.l||bl.n}`;
+      }
+    }
+
+    toast(msg);
     fileInput.value = ''; const dp=document.getElementById('doc-prec'); if(dp) dp.value='';
+    const dmv=document.getElementById('doc-mont'); if(dmv) dmv.value='';
+    const tmv=document.getElementById('doc-tfr-mont'); if(tmv) tmv.value='';
+    const tbv=document.getElementById('doc-tfr-bien'); if(tbv) tbv.value='';
     buildDocumentsPage();
   } catch(e){
     const msg = String(e.message||e);
