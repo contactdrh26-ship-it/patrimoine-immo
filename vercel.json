@@ -3,6 +3,7 @@
     { "path": "/api/send-avis", "schedule": "0 6 1 * *" }
   ],
   "functions": {
-    "api/send-avis.js": { "maxDuration": 60 }
+    "api/send-avis.js": { "maxDuration": 60 },
+    "api/send-pdf.js": { "maxDuration": 30 }
   }
 }
