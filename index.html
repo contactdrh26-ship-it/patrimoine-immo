@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patrimoine Immobilier — Gestion Mensuelle</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2557,6 +2557,20 @@ function buildQuittancesPage(){
   });
 }
 
+// ── Tampon de société + signature (quittances & attestations) ──────
+function genTamponHTML(BL){
+  const sig = (BL.nom||'').toLowerCase().includes('sophie') ? 'S. Bismuth' : 'J. Bismuth';
+  return `
+    <div style="margin-top:12px;text-align:right;">
+      <div style="font-family:'Caveat',cursive;font-size:34px;line-height:1;color:#1a3f7a;transform:rotate(-4deg);margin-bottom:-15px;margin-right:22px;position:relative;z-index:2;">${sig}</div>
+      <div style="display:inline-block;transform:rotate(-5deg);border:3px double #2050a0;border-radius:10px;padding:7px 16px;color:#2050a0;text-align:center;opacity:.88;background:rgba(32,80,160,0.03);">
+        <div style="font-weight:800;font-size:12.5px;letter-spacing:.06em;font-family:'Sora',sans-serif;">${(BL.nom||'BAILLEUR').toUpperCase()}</div>
+        <div style="font-size:8.5px;font-family:'Sora',sans-serif;margin-top:2px;">${BL.adr||''} — ${BL.cp||''} ${BL.ville||''}</div>
+        ${BL.siret?`<div style="font-size:8.5px;font-family:'JetBrains Mono',monospace;margin-top:1px;">SIRET ${BL.siret}</div>`:''}
+      </div>
+    </div>`;
+}
+
 // ── Générer HTML d'une quittance ────────────────────────────────────
 function genQuittanceHTML(b){
   const s = (LD[CUR]||{})[b.id]||{};
@@ -2649,6 +2663,7 @@ function genQuittanceHTML(b){
             <div class="qs-name">${BL.nom||'Bailleur'}</div>
             <div class="qs-qual">Propriétaire / Bailleur</div>
             ${BL.tel?`<div style="font-size:11px;color:var(--mu);margin-top:3px;">${BL.tel}</div>`:''}
+            ${genTamponHTML(BL)}
           </div>
         </div>
       </div>
@@ -2691,7 +2706,7 @@ function printQuittance(){
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0;}
       body{font-family:'Sora',sans-serif;background:#fff;padding:0;}
@@ -2739,6 +2754,12 @@ async function genPDFBase64(htmlString, fileName){
   const wrap=document.createElement('div');
   wrap.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff;';
   wrap.innerHTML=htmlString;
+  // Pour le PDF : on retire les styles décoratifs de l'aperçu (coins arrondis, ombre, bordure)
+  const elPDF = wrap.firstElementChild;
+  if(elPDF){
+    elPDF.style.margin='0'; elPDF.style.boxShadow='none'; elPDF.style.border='none';
+    elPDF.style.borderRadius='0'; elPDF.style.maxWidth='none'; elPDF.style.width='794px';
+  }
   document.body.appendChild(wrap);
   try{
     window.scrollTo(0,0); // corrige le décalage de capture quand la page est défilée
@@ -3126,6 +3147,7 @@ function genAttestationHTML(b){
             <div class="qs-name">${BL.nom||'Bailleur'}</div>
             <div class="qs-qual">Représenté(e) par : ${signataire}</div>
             ${BL.tel?`<div style="font-size:11px;color:var(--mu);margin-top:3px;">${BL.tel}</div>`:''}
+            ${genTamponHTML(BL)}
           </div>
         </div>
       </div>
@@ -3155,7 +3177,7 @@ function printAttestation(){
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0;}
       body{font-family:'Sora',sans-serif;background:#fff;padding:0;}
