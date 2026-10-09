@@ -2752,6 +2752,7 @@ function downloadPDF(){
 async function genPDFBase64(htmlString, fileName){
   const sx=window.scrollX||0, sy=window.scrollY||0;
   const wrap=document.createElement('div');
+  wrap.id='pdf-capture-wrap';
   wrap.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff;';
   wrap.innerHTML=htmlString;
   // Pour le PDF : on retire les styles décoratifs de l'aperçu (coins arrondis, ombre, bordure)
@@ -2764,7 +2765,12 @@ async function genPDFBase64(htmlString, fileName){
   try{
     window.scrollTo(0,0); // corrige le décalage de capture quand la page est défilée
     const opt={margin:0,filename:fileName,image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1280},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1280,
+        // Au moment de la photo, on replace l'élément en (0,0) dans le clone : plus aucun décalage possible
+        onclone:(docClone)=>{
+          const w=docClone.getElementById('pdf-capture-wrap');
+          if(w){ w.style.left='0'; w.style.top='0'; }
+        }},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['avoid-all','css','legacy']}};
     const uri=await html2pdf().set(opt).from(wrap.firstElementChild||wrap).outputPdf('datauristring');
