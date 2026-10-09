@@ -2733,6 +2733,37 @@ function downloadPDF(){
   const opt={margin:0,filename:`Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_${ANNEE_APP}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
   html2pdf().set(opt).from(el).save().catch(e=>{toast('❌ Erreur PDF');console.log('Erreur html2pdf:',e);});
 }
+// ── Génération PDF en arrière-plan (même moteur que Télécharger PDF) ──
+async function genPDFBase64(htmlString, fileName){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff;';
+  wrap.innerHTML=htmlString;
+  document.body.appendChild(wrap);
+  try{
+    const opt={margin:0,filename:fileName,image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+    const uri=await html2pdf().set(opt).from(wrap.firstElementChild||wrap).outputPdf('datauristring');
+    return String(uri).split(',')[1]; // base64 pur, sans le préfixe data:
+  } finally {
+    document.body.removeChild(wrap);
+  }
+}
+
+// ── Envoi avec pièce jointe PDF via Gmail (fonction Vercel /api/send-pdf) ──
+async function envoyerAvecPDF(to, subject, html, fromName, pdfBase64, pdfFilename){
+  try{
+    const resp=await fetch('/api/send-pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to,subject,html,fromName,pdfBase64,pdfFilename})
+    });
+    let data={}; try{ data=await resp.json(); }catch(e){}
+    if(resp.ok&&data.success) return {ok:true};
+    return {ok:false,error:data.error||('Erreur HTTP '+resp.status)};
+  }catch(e){
+    return {ok:false,error:e.message};
+  }
+}
+
 // ── Envoi email via Resend (PDF généré côté serveur) ─────────────────
 // ── Envoi via EmailJS (compte Gmail contactdrh26) — remplace Resend qui bloquait les envois ──
 const EMAILJS = { service:'service_l0wg71i', template:'template_etij2b7', publicKey:'egq016Eb6yWUhZ03o' };
@@ -2840,19 +2871,38 @@ async function sendSingleQuittance(bienId){
   };
 
   const fileName = `Quittance_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${MN[CUR]}_${ANNEE_APP}.pdf`;
-  toast('📤 Envoi en cours...');
+  toast('📄 Génération du PDF et envoi...');
   try {
     const quittanceHtml = genQuittanceHTML(b);
-    const r = await envoyerViaEmailJS(email, subj, mailHtml + '<br><hr><br>' + quittanceHtml, BL.nom);
+    // 1. Générer le PDF (même rendu que le bouton Télécharger PDF)
+    let pdfB64 = null;
+    try{ pdfB64 = await genPDFBase64(quittanceHtml, fileName); }
+    catch(e){ console.log('Génération PDF échouée:', e); }
+
+    let r, avecPJ = false;
+    if(pdfB64){
+      // 2. Envoi via Gmail avec le PDF en pièce jointe
+      const noteBody = mailHtml + '<br><div style="font-family:Arial,sans-serif;font-size:12px;color:#555;">📎 Votre quittance est jointe à cet email au format PDF.</div>';
+      r = await envoyerAvecPDF(email, subj, noteBody, BL.nom, pdfB64, fileName);
+      avecPJ = r.ok;
+      if(!r.ok){
+        console.log('Envoi avec PDF échoué:', r.error);
+        toast('⚠️ Pièce jointe indisponible ('+String(r.error).slice(0,60)+') — envoi sans PDF...');
+        r = await envoyerViaEmailJS(email, subj, mailHtml + '<br><hr><br>' + quittanceHtml, BL.nom);
+      }
+    } else {
+      // Repli : ancien envoi avec la quittance dans le corps du mail
+      r = await envoyerViaEmailJS(email, subj, mailHtml + '<br><hr><br>' + quittanceHtml, BL.nom);
+    }
     if(r.ok){
-      toast('✅ Quittance envoyée à '+email);
+      toast(avecPJ ? '✅ Quittance envoyée à '+email+' (PDF joint)' : '✅ Quittance envoyée à '+email);
       if(b.tf_refac>0){
         b.tf_refac = null;
         saveBiens();
         toast('🏛️ TF refacturée incluse dans cette quittance — remise à zéro pour les prochaines');
       }
     } else {
-      toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
+      toast('❌ Erreur : '+(r.error||'Vérifiez la configuration'));
     }
   } catch(e){
     toast('❌ Erreur réseau : '+e.message);
@@ -3136,14 +3186,32 @@ async function sendAttestationEmail(){
 
   const BL = getBailleur(b);
   const htmlContent = genAttestationHTML(b).replace(/[\r\n]/g,' ');
-  const intro = `Bonjour ${b.l||''},<br><br>Veuillez trouver ci-dessous votre attestation de fin de location (bon règlement des loyers).<br><br>Cordialement,<br>${BL.nom||'Le Bailleur'}`;
+  const intro = `Bonjour ${b.l||''},<br><br>Veuillez trouver ci-joint votre attestation de fin de location (bon règlement des loyers).<br><br>Cordialement,<br>${BL.nom||'Le Bailleur'}`;
+  const subjAtt = 'Attestation de fin de location — '+(BL.nom||'Bailleur');
+  const fileAtt = `Attestation_fin_location_${(b.l||b.n).replace(/[^a-zA-Z0-9]/g,'_')}_${ANNEE_APP}.pdf`;
 
-  toast('📤 Envoi en cours...');
+  toast('📄 Génération du PDF et envoi...');
   try {
-    const r = await envoyerViaEmailJS(email, 'Attestation de fin de location — '+(BL.nom||'Bailleur'),
-      `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><hr><br>${htmlContent}`, BL.nom);
-    if(r.ok) toast('✅ Attestation envoyée à '+email);
-    else toast('❌ Erreur : '+(r.error||'Vérifiez la configuration EmailJS'));
+    let pdfB64 = null;
+    try{ pdfB64 = await genPDFBase64(genAttestationHTML(b), fileAtt); }
+    catch(e){ console.log('Génération PDF attestation échouée:', e); }
+
+    let r, avecPJ = false;
+    if(pdfB64){
+      r = await envoyerAvecPDF(email, subjAtt,
+        `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><div style="font-family:Arial,sans-serif;font-size:12px;color:#555;">📎 Votre attestation est jointe à cet email au format PDF.</div>`,
+        BL.nom, pdfB64, fileAtt);
+      avecPJ = r.ok;
+      if(!r.ok){
+        console.log('Envoi attestation avec PDF échoué:', r.error);
+        toast('⚠️ Pièce jointe indisponible — envoi sans PDF...');
+        r = await envoyerViaEmailJS(email, subjAtt, `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><hr><br>${htmlContent}`, BL.nom);
+      }
+    } else {
+      r = await envoyerViaEmailJS(email, subjAtt, `<div style="font-family:Arial;font-size:13px;">${intro}</div><br><hr><br>${htmlContent}`, BL.nom);
+    }
+    if(r.ok) toast(avecPJ ? '✅ Attestation envoyée à '+email+' (PDF joint)' : '✅ Attestation envoyée à '+email);
+    else toast('❌ Erreur : '+(r.error||'Vérifiez la configuration'));
   } catch(e){
     toast('❌ Erreur réseau : '+e.message);
   }
