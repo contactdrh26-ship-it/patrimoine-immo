@@ -2751,29 +2751,30 @@ function downloadPDF(){
 // ── Génération PDF en arrière-plan (même moteur que Télécharger PDF) ──
 async function genPDFBase64(htmlString, fileName){
   const sx=window.scrollX||0, sy=window.scrollY||0;
+  // Voile plein écran : la quittance s'affiche réellement pendant ~1s, le temps de la photo.
+  // C'est la même méthode que le bouton "Télécharger PDF" (élément visible), la plus fiable.
   const wrap=document.createElement('div');
   wrap.id='pdf-capture-wrap';
-  wrap.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff;';
-  wrap.innerHTML=htmlString;
-  // Pour le PDF : on retire les styles décoratifs de l'aperçu (coins arrondis, ombre, bordure)
-  const elPDF = wrap.firstElementChild;
+  wrap.style.cssText='position:fixed;inset:0;z-index:999999;background:#fff;overflow:hidden;';
+  wrap.innerHTML='<div id="pdf-capture-inner" style="width:794px;background:#fff;">'+htmlString+'</div>'
+    +'<div style="position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:13px;color:#6272a0;font-family:Sora,sans-serif;">📄 Génération du PDF en cours...</div>';
+  const inner = wrap.firstElementChild;
+  // On retire les styles décoratifs de l'aperçu (coins arrondis, ombre, bordure)
+  const elPDF = inner.firstElementChild;
   if(elPDF){
     elPDF.style.margin='0'; elPDF.style.boxShadow='none'; elPDF.style.border='none';
     elPDF.style.borderRadius='0'; elPDF.style.maxWidth='none'; elPDF.style.width='794px';
   }
   document.body.appendChild(wrap);
   try{
-    window.scrollTo(0,0); // corrige le décalage de capture quand la page est défilée
+    window.scrollTo(0,0);
+    try{ await document.fonts.ready; }catch(e){}
+    await new Promise(r=>setTimeout(r,200)); // laisse le rendu se stabiliser
     const opt={margin:0,filename:fileName,image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1280,
-        // Au moment de la photo, on replace l'élément en (0,0) dans le clone : plus aucun décalage possible
-        onclone:(docClone)=>{
-          const w=docClone.getElementById('pdf-capture-wrap');
-          if(w){ w.style.left='0'; w.style.top='0'; }
-        }},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['avoid-all','css','legacy']}};
-    const uri=await html2pdf().set(opt).from(wrap.firstElementChild||wrap).outputPdf('datauristring');
+    const uri=await html2pdf().set(opt).from(inner).outputPdf('datauristring');
     return String(uri).split(',')[1]; // base64 pur, sans le préfixe data:
   } finally {
     document.body.removeChild(wrap);
