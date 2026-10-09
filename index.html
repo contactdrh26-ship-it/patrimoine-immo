@@ -2735,16 +2735,22 @@ function downloadPDF(){
 }
 // ── Génération PDF en arrière-plan (même moteur que Télécharger PDF) ──
 async function genPDFBase64(htmlString, fileName){
+  const sx=window.scrollX||0, sy=window.scrollY||0;
   const wrap=document.createElement('div');
   wrap.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff;';
   wrap.innerHTML=htmlString;
   document.body.appendChild(wrap);
   try{
-    const opt={margin:0,filename:fileName,image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}};
+    window.scrollTo(0,0); // corrige le décalage de capture quand la page est défilée
+    const opt={margin:0,filename:fileName,image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1280},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['avoid-all','css','legacy']}};
     const uri=await html2pdf().set(opt).from(wrap.firstElementChild||wrap).outputPdf('datauristring');
     return String(uri).split(',')[1]; // base64 pur, sans le préfixe data:
   } finally {
     document.body.removeChild(wrap);
+    window.scrollTo(sx,sy);
   }
 }
 
