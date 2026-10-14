@@ -419,6 +419,15 @@ input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--bl
       <div class="prog-txt" id="loy-prog-txt">0%</div>
     </div>
 
+    <!-- BLOC-NOTES DU MOIS -->
+    <div class="fbox" style="margin:14px 0;border-left:3px solid #c96a00;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div style="font-size:13px;font-weight:700;color:#c96a00;">📝 Bloc-notes de <span id="note-mois-label">—</span></div>
+        <div id="note-mois-status" style="font-size:10px;color:var(--mu);font-family:'JetBrains Mono',monospace;"></div>
+      </div>
+      <textarea id="note-mois" rows="3" placeholder="Notez ici ce dont vous devez vous souvenir ce mois-ci (paiements particuliers, relances à faire, travaux prévus...). Sauvegarde automatique." style="width:100%;border:1px solid var(--brd);border-radius:7px;padding:10px 12px;font-size:13px;font-family:'Sora',sans-serif;background:#fffdf5;outline:none;resize:vertical;line-height:1.6;" oninput="onNoteMoisInput()"></textarea>
+    </div>
+
     <div class="st">
       <span>🏠 Locataires — <span id="loy-mois-sub">—</span></span>
       <div style="display:flex;gap:6px">
@@ -1336,8 +1345,50 @@ function buildAnnuelPage(){
 // ══════════════════════════════════
 //  LOYERS DU MOIS
 // ══════════════════════════════════
+// ── Bloc-notes du mois (synchronisé via Supabase, table notes_mois) ──
+let NOTES_MOIS = JSON.parse(localStorage.getItem('immo_notes_mois')||'{}');
+let _noteTimer = null, _noteLoadedFor = null;
+function noteKey(){ return ANNEE_APP+'-'+String(CUR+1).padStart(2,'0'); }
+async function chargerNoteMois(){
+  const ta=document.getElementById('note-mois'); if(!ta) return;
+  set('note-mois-label', MN[CUR]+' '+ANNEE_APP);
+  const cle = noteKey();
+  ta.value = NOTES_MOIS[cle]||'';          // copie locale immédiate
+  _noteLoadedFor = cle;
+  const st=document.getElementById('note-mois-status'); if(st) st.textContent='';
+  try{
+    const { data } = await sb.from('notes_mois').select('texte').eq('cle', cle);
+    // On n'applique la version en ligne que si l'utilisateur n'a pas changé de mois entre-temps
+    if(data && data.length && _noteLoadedFor===cle && document.activeElement!==ta){
+      ta.value = data[0].texte||'';
+      NOTES_MOIS[cle]=ta.value;
+      localStorage.setItem('immo_notes_mois',JSON.stringify(NOTES_MOIS));
+    }
+  }catch(e){}
+}
+function onNoteMoisInput(){
+  const st=document.getElementById('note-mois-status'); if(st) st.textContent='✏️ saisie...';
+  clearTimeout(_noteTimer);
+  _noteTimer=setTimeout(saveNoteMois, 1000);
+}
+async function saveNoteMois(){
+  const ta=document.getElementById('note-mois'); if(!ta) return;
+  const cle=noteKey(), txt=ta.value;
+  NOTES_MOIS[cle]=txt;
+  localStorage.setItem('immo_notes_mois',JSON.stringify(NOTES_MOIS));
+  const st=document.getElementById('note-mois-status');
+  try{
+    const { error } = await sb.from('notes_mois').upsert({cle:cle, texte:txt});
+    if(st) st.textContent = error ? '⚠️ non synchronisée (table notes_mois manquante ?)' : '✅ enregistrée à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    if(error) console.log('Note mois:', error);
+  }catch(e){
+    if(st) st.textContent='⚠️ hors ligne — gardée sur cet appareil';
+  }
+}
+
 function buildLoyersPage(){
   set('loy-mois-label',MN[CUR]);set('loy-mois-sub',MN[CUR]+' '+ANNEE_APP);
+  chargerNoteMois();
   set('loy-attendu',fmt(PREV[CUR]));
 
   const grid=document.getElementById('lc-grid');
