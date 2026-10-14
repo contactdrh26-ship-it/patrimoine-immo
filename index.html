@@ -1154,7 +1154,7 @@ chargerBiens();
 async function saveBiens(){
   refreshPrev();
   let { error } = await sb.from('biens').upsert(
-    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null, tf_refac:b.tf_refac||null}))
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null, tf_refac:b.tf_refac||null, note_loc:b.note_loc||null}))
   );
   if(error && (error.message||'').includes('column')){
     // Colonnes din/dout pas encore créées dans Supabase → sauvegarde sans les dates
@@ -1386,6 +1386,17 @@ async function saveNoteMois(){
   }
 }
 
+// ── Note permanente par locataire (colonne note_loc de la table biens) ──
+async function saveNoteLoc(id, txt){
+  const b=BIENS.find(x=>x.id===id); if(!b) return;
+  b.note_loc = txt;
+  try{
+    const { error } = await sb.from('biens').update({note_loc: txt||null}).eq('id', id);
+    if(error){ console.log('note_loc:', error); toast('⚠️ Note gardée sur cet appareil seulement (colonne note_loc manquante ?)'); }
+    else toast('🗒 Note enregistrée — '+(b.l||b.n));
+  }catch(e){ toast('⚠️ Hors ligne — note non synchronisée'); }
+}
+
 function buildLoyersPage(){
   set('loy-mois-label',MN[CUR]);set('loy-mois-sub',MN[CUR]+' '+ANNEE_APP);
   chargerNoteMois();
@@ -1555,7 +1566,10 @@ function buildLoyersPage(){
               <button class="sb2 ${st==='vac'?'s-vac':''}" onclick="setSt(${b.id},'vac')">🚫 Non occupé</button>
             </div>
             <div class="ecart-lbl" id="ec-${b.id}"></div>
-          </div>`;
+          </div>
+          <input value="${(b.note_loc||'').replace(/"/g,'&quot;')}" placeholder="🗒 Note sur ce locataire (permanente, tous les mois)..."
+            onchange="saveNoteLoc(${b.id},this.value)"
+            style="width:100%;margin-top:7px;border:1px solid #e8d9a8;border-radius:6px;padding:6px 9px;font-size:11px;font-family:'Sora',sans-serif;background:#fffbe8;color:#6b5500;outline:none;">`;
         grid.appendChild(div);
         onEChange(b.id,att);
       });
