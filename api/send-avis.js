@@ -76,6 +76,8 @@ function loyerAttendu(b, m, y){
 // ── HTML de l'avis d'échéance ──
 function genAvisHTML(b, bailleurNom, moisNom, annee, attendu){
   const chg = b.chg || 0;
+  const tf = parseFloat(b.tf_refac) > 0 ? parseFloat(b.tf_refac) : 0;
+  const total = attendu + tf;
   const loyerHC = Math.max(0, attendu - chg);
   const ref = `AVI-${annee}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
   const fmt = n => n.toLocaleString('fr-FR') + ' €';
@@ -96,8 +98,13 @@ function genAvisHTML(b, bailleurNom, moisNom, annee, attendu){
       <table style="width:100%;border-collapse:collapse;font-size:13px;margin:18px 0;">
         <tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;">Loyer hors charges</td><td style="text-align:right;border-bottom:1px solid #eef1f7;">${fmt(loyerHC)}</td></tr>
         <tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;">Charges</td><td style="text-align:right;border-bottom:1px solid #eef1f7;">${fmt(chg)}</td></tr>
-        <tr><td style="padding:10px 0;font-weight:bold;font-size:15px;">TOTAL À RÉGLER</td><td style="text-align:right;font-weight:bold;font-size:15px;color:#003F87;">${fmt(attendu)}</td></tr>
+        ${tf>0?`<tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;color:#8a5a00;"><b>Taxe foncière (refacturation annuelle)</b></td><td style="text-align:right;border-bottom:1px solid #eef1f7;color:#8a5a00;font-weight:bold;">${fmt(tf)}</td></tr>`:''}
+        <tr><td style="padding:10px 0;font-weight:bold;font-size:15px;">TOTAL À RÉGLER</td><td style="text-align:right;font-weight:bold;font-size:15px;color:#003F87;">${fmt(total)}</td></tr>
       </table>
+      ${tf>0?`<p style="font-size:12px;line-height:1.6;background:#fff8e6;border:1px solid #f0dfa8;border-radius:6px;padding:10px 14px;color:#6b5500;">
+        🏛️ Ce mois-ci, le total inclut la <b>refacturation annuelle de la taxe foncière</b> (${fmt(tf)}),
+        conformément aux dispositions de votre bail commercial. Cette ligne n'apparaît qu'une fois par an.
+      </p>`:''}
       <p style="font-size:12px;line-height:1.7;color:#555;">
         Règlement par virement, à réception du présent avis.<br>
         Le présent avis d'échéance ne constitue pas une quittance : celle-ci vous sera adressée après encaissement.
