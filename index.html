@@ -1567,6 +1567,7 @@ function buildLoyersPage(){
             </div>
             <div class="ecart-lbl" id="ec-${b.id}"></div>
           </div>
+          ${b.tf_refac>0?`<div style="margin-top:7px;border:1px solid #c9d8f0;border-radius:6px;padding:6px 9px;font-size:11px;background:#eef4ff;color:#1a3f7a;font-weight:600;">🏛️ Taxe foncière à refacturer : +${b.tf_refac.toLocaleString('fr-FR')} € — total attendu ce mois : ${((att||0)+b.tf_refac).toLocaleString('fr-FR')} €</div>`:''}
           <input value="${(b.note_loc||'').replace(/"/g,'&quot;')}" placeholder="🗒 Note sur ce locataire (permanente, tous les mois)..."
             onchange="saveNoteLoc(${b.id},this.value)"
             style="width:100%;margin-top:7px;border:1px solid #e8d9a8;border-radius:6px;padding:6px 9px;font-size:11px;font-family:'Sora',sans-serif;background:#fffbe8;color:#6b5500;outline:none;">`;
@@ -2641,6 +2642,8 @@ function genQuittanceHTML(b){
   const s = (LD[CUR]||{})[b.id]||{};
   const BL = getBailleur(b);
   const enc = s.enc||b.loy;
+  // TF refacturée : n'apparaît sur la quittance que si le montant encaissé la couvre (loyer + TF)
+  const tfQ = (b.tf_refac>0 && enc >= ((b.loy||0) + b.tf_refac - 0.5)) ? b.tf_refac : 0;
   const moisNom = MN[CUR];
   const annee = ANNEE_APP;
   const refNum = `QUI-${annee}-${String(CUR+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
@@ -2704,9 +2707,9 @@ function genQuittanceHTML(b){
           <tr><td>Bailleur</td><td>${BL.nom}${BL.siret?' · SIRET : '+BL.siret:''}</td></tr>
           <tr><td>Bien loué</td><td>${b.n}</td></tr>
           <tr><td>Adresse du bien</td><td>${b.a}</td></tr>
-          <tr><td>Loyer hors charges</td><td>${(enc - b.chg - (b.tf_refac||0)).toLocaleString('fr-FR')} €</td></tr>
+          <tr><td>Loyer hors charges</td><td>${(enc - b.chg - tfQ).toLocaleString('fr-FR')} €</td></tr>
           <tr><td>Charges</td><td>${b.chg.toLocaleString('fr-FR')} €</td></tr>
-          ${b.tf_refac>0?`<tr><td>Taxe foncière (refacturation)</td><td>${(b.tf_refac||0).toLocaleString('fr-FR')} €</td></tr>`:''}
+          ${tfQ>0?`<tr><td>Taxe foncière (refacturation annuelle)</td><td>${tfQ.toLocaleString('fr-FR')} €</td></tr>`:''}
           <tr><td>Total encaissé</td><td>${enc.toLocaleString('fr-FR')} €</td></tr>
           <tr><td>Période</td><td>Du 1er au 30/31 ${moisNom} ${annee}</td></tr>
           <tr><td>Date de paiement</td><td>${date}</td></tr>
@@ -2995,10 +2998,13 @@ async function sendSingleQuittance(bienId){
     }
     if(r.ok){
       toast(avecPJ ? '✅ Quittance envoyée à '+email+' (PDF joint)' : '✅ Quittance envoyée à '+email);
-      if(b.tf_refac>0){
+      const sTF=(LD[CUR]||{})[b.id]||{}; const encTF=sTF.enc||b.loy;
+      if(b.tf_refac>0 && encTF >= ((b.loy||0)+b.tf_refac-0.5)){
         b.tf_refac = null;
         saveBiens();
         toast('🏛️ TF refacturée incluse dans cette quittance — remise à zéro pour les prochaines');
+      } else if(b.tf_refac>0){
+        toast('🏛️ TF de '+b.tf_refac.toLocaleString('fr-FR')+' € toujours en attente (non couverte par ce paiement)');
       }
     } else {
       toast('❌ Erreur : '+(r.error||'Vérifiez la configuration'));
