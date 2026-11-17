@@ -1567,7 +1567,7 @@ function buildLoyersPage(){
             </div>
             <div class="ecart-lbl" id="ec-${b.id}"></div>
           </div>
-          ${b.tf_refac>0?`<div style="margin-top:7px;border:1px solid #c9d8f0;border-radius:6px;padding:6px 9px;font-size:11px;background:#eef4ff;color:#1a3f7a;font-weight:600;">🏛️ Taxe foncière à refacturer : +${b.tf_refac.toLocaleString('fr-FR')} € — total attendu ce mois : ${((att||0)+b.tf_refac).toLocaleString('fr-FR')} €</div>`:''}
+          ${b.tf_refac>0?`<div style="margin-top:7px;border:1px solid #c9d8f0;border-radius:6px;padding:6px 9px;font-size:11px;background:#eef4ff;color:#1a3f7a;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span>🏛️ Taxe foncière à refacturer : +${b.tf_refac.toLocaleString('fr-FR')} € — total attendu ce mois : ${((att||0)+b.tf_refac).toLocaleString('fr-FR')} €</span><button onclick="sendAvisTFNow(${b.id})" style="border:none;border-radius:6px;padding:5px 10px;font-size:10.5px;font-weight:700;font-family:'Sora',sans-serif;background:#1a3f7a;color:#fff;cursor:pointer;white-space:nowrap;">📧 Envoyer l'avis TF maintenant</button></div>`:''}
           <input value="${(b.note_loc||'').replace(/"/g,'&quot;')}" placeholder="🗒 Note sur ce locataire (permanente, tous les mois)..."
             onchange="saveNoteLoc(${b.id},this.value)"
             style="width:100%;margin-top:7px;border:1px solid #e8d9a8;border-radius:6px;padding:6px 9px;font-size:11px;font-family:'Sora',sans-serif;background:#fffbe8;color:#6b5500;outline:none;">`;
@@ -2213,7 +2213,10 @@ function addBien(){
       b.chg = pf('nb-chg');
       b.din = v('nb-din')||null;
       b.dout = v('nb-dout')||null;
+      const _oldTF = b.tf_refac;
       b.tf_refac = pf('nb-tfr')||null;
+      // TF nouvellement saisie ou modifiée → proposer l'envoi immédiat de l'avis de refacturation
+      if(b.tf_refac>0 && b.tf_refac!==_oldTF){ setTimeout(()=>sendAvisTFNow(b.id), 400); }
     }
     _editBienId = null;
     saveBiens();
@@ -2851,6 +2854,51 @@ async function genPDFBase64(htmlString, fileName){
 }
 
 // ── Envoi avec pièce jointe PDF via Gmail (fonction Vercel /api/send-pdf) ──
+// ── Avis de refacturation de taxe foncière — envoi immédiat (sans attendre le 1er du mois) ──
+async function sendAvisTFNow(bienId){
+  const b = BIENS.find(x=>x.id===bienId);
+  if(!b || !(b.tf_refac>0)){ toast('⚠️ Aucune taxe foncière à refacturer sur ce bien'); return; }
+  const email = LOCATAIRE_EMAILS[b.id];
+  if(!email){ toast('⚠️ Pas d\'email enregistré pour '+(b.l||b.n)+' — ajoutez-le dans l\'onglet Quittances'); return; }
+  const tf = b.tf_refac;
+  if(!confirm('Envoyer maintenant l\'avis de refacturation de la taxe foncière ('+tf.toLocaleString('fr-FR')+' €) à '+(b.l||b.n)+' ('+email+') ?')) return;
+  const BL = getBailleur(b);
+  const fmt = n => n.toLocaleString('fr-FR')+' €';
+  const subj = 'Refacturation taxe foncière '+ANNEE_APP+' — '+b.n;
+  const html = `
+  <div style="max-width:640px;margin:0 auto;font-family:Arial,sans-serif;color:#0d1a35;border:1px solid #e0e6f0;border-radius:8px;overflow:hidden;">
+    <div style="background:#003F87;padding:22px 28px;color:#fff;">
+      <h2 style="margin:0;font-size:22px;">Avis de refacturation</h2>
+      <div style="font-size:12px;opacity:.75;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;">Taxe foncière ${ANNEE_APP}</div>
+    </div>
+    <div style="padding:24px 28px;">
+      <p style="font-size:13px;line-height:1.7;">Bonjour ${b.l||''},</p>
+      <p style="font-size:13px;line-height:1.7;">
+        Conformément aux dispositions de votre bail commercial, nous vous informons de la refacturation
+        de la <b>taxe foncière ${ANNEE_APP}</b> concernant le local situé :<br><b>${b.a||''}</b>
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin:18px 0;">
+        <tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;">Taxe foncière (refacturation annuelle)</td><td style="text-align:right;border-bottom:1px solid #eef1f7;">${fmt(tf)}</td></tr>
+        <tr><td style="padding:10px 0;font-weight:bold;font-size:15px;">TOTAL À RÉGLER</td><td style="text-align:right;font-weight:bold;font-size:15px;color:#003F87;">${fmt(tf)}</td></tr>
+      </table>
+      <p style="font-size:12px;line-height:1.7;color:#555;">
+        Ce montant est à régler par virement, avec votre prochain loyer ou séparément, à réception du présent avis.<br>
+        Cette refacturation n'intervient qu'une fois par an. Elle figurera également sur votre prochain avis d'échéance,
+        et sur votre quittance une fois réglée.
+      </p>
+      <p style="font-size:13px;margin-top:22px;">Cordialement,<br><b>${BL.nom||'Le Bailleur'}</b></p>
+    </div>
+    <div style="background:#f0f5fc;padding:10px 28px;font-size:10px;color:#6272a0;">
+      Document généré automatiquement · Patrimoine Immobilier
+    </div>
+  </div>`;
+  toast('📧 Envoi en cours...');
+  let r = await envoyerAvecPDF(email, subj, html, BL.nom||'Gestion Locative', null, null);
+  if(!r.ok) r = await envoyerViaEmailJS(email, subj, html, BL.nom||'Gestion Locative');
+  if(r.ok) toast('✅ Avis de taxe foncière ('+tf.toLocaleString('fr-FR')+' €) envoyé à '+email);
+  else toast('❌ Erreur envoi : '+(r.error||'vérifiez la configuration'));
+}
+
 async function envoyerAvecPDF(to, subject, html, fromName, pdfBase64, pdfFilename){
   try{
     const resp=await fetch('/api/send-pdf',{
@@ -3507,6 +3555,8 @@ async function uploadDocument(){
         bl.tf_refac = tfrMont;
         await saveBiens();
         msg += ` · 🏛️ ${tfrMont.toLocaleString('fr-FR')} € seront ajoutés à la prochaine quittance de ${bl.l||bl.n}`;
+        // Proposer l'envoi immédiat de l'avis de refacturation au locataire
+        setTimeout(()=>sendAvisTFNow(bl.id), 600);
       }
     }
 
