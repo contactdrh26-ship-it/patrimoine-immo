@@ -1154,7 +1154,7 @@ chargerBiens();
 async function saveBiens(){
   refreshPrev();
   let { error } = await sb.from('biens').upsert(
-    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null, tf_refac:b.tf_refac||null, note_loc:b.note_loc||null}))
+    BIENS.map(b=>({id:b.id, n:b.n, a:b.a, e:b.e, t:b.t||'', l:b.l, loy:b.loy, crd:b.crd, chg:b.chg, din:b.din||null, dout:b.dout||null, tf_refac:b.tf_refac||null, tf_doc:b.tf_doc||null, note_loc:b.note_loc||null}))
   );
   if(error && (error.message||'').includes('column')){
     // Colonnes din/dout pas encore créées dans Supabase → sauvegarde sans les dates
@@ -1568,6 +1568,7 @@ function buildLoyersPage(){
             <div class="ecart-lbl" id="ec-${b.id}"></div>
           </div>
           ${b.tf_refac>0?`<div style="margin-top:7px;border:1px solid #c9d8f0;border-radius:6px;padding:6px 9px;font-size:11px;background:#eef4ff;color:#1a3f7a;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span>🏛️ Taxe foncière à refacturer : +${b.tf_refac.toLocaleString('fr-FR')} € — total attendu ce mois : ${((att||0)+b.tf_refac).toLocaleString('fr-FR')} €</span><button onclick="sendAvisTFNow(${b.id})" style="border:none;border-radius:6px;padding:5px 10px;font-size:10.5px;font-weight:700;font-family:'Sora',sans-serif;background:#1a3f7a;color:#fff;cursor:pointer;white-space:nowrap;">📧 Envoyer l'avis TF maintenant</button></div>`:''}
+          ${arrBandHTML(b)}
           <input value="${(b.note_loc||'').replace(/"/g,'&quot;')}" placeholder="🗒 Note sur ce locataire (permanente, tous les mois)..."
             onchange="saveNoteLoc(${b.id},this.value)"
             style="width:100%;margin-top:7px;border:1px solid #e8d9a8;border-radius:6px;padding:6px 9px;font-size:11px;font-family:'Sora',sans-serif;background:#fffbe8;color:#6b5500;outline:none;">`;
@@ -2854,6 +2855,26 @@ async function genPDFBase64(htmlString, fileName){
 }
 
 // ── Envoi avec pièce jointe PDF via Gmail (fonction Vercel /api/send-pdf) ──
+// ── Arriérés : mois passés marqués Partiel / Retard / Impayé où il manque de l'argent ──
+function arrieresBien(b){
+  const list = [];
+  for(let mm = 0; mm < CUR; mm++){
+    const s = (LD[mm]||{})[b.id];
+    if(!s) continue;
+    if(!['par','ret','imp'].includes(s.st)) continue;
+    const du = (loyerAttendu(b, mm) || 0) - (parseFloat(s.enc) || 0);
+    if(du > 0.5) list.push({ m: mm, du: Math.round(du) });
+  }
+  return list;
+}
+function arrBandHTML(b){
+  const ar = arrieresBien(b);
+  if(!ar.length) return '';
+  const tot = ar.reduce((s,a)=>s+a.du,0);
+  const det = ar.map(a=>MN[a.m]+' : '+a.du.toLocaleString('fr-FR')+' €').join(' · ');
+  return `<div style="margin-top:7px;border:1px solid #efc2c2;border-radius:6px;padding:6px 9px;font-size:11px;background:#fdeeee;color:#7a1f1f;font-weight:600;">💸 Arriérés : ${tot.toLocaleString('fr-FR')} € (${det}) — réclamés automatiquement sur le prochain avis d'échéance</div>`;
+}
+
 // ── Avis de refacturation de taxe foncière — envoi immédiat (sans attendre le 1er du mois) ──
 async function sendAvisTFNow(bienId){
   const b = BIENS.find(x=>x.id===bienId);
@@ -2893,18 +2914,40 @@ async function sendAvisTFNow(bienId){
     </div>
   </div>`;
   toast('📧 Envoi en cours...');
-  let r = await envoyerAvecPDF(email, subj, html, BL.nom||'Gestion Locative', null, null);
+  // ── Pièce jointe : l'avis de taxe foncière mis dans Documents, s'il existe ──
+  let pjB64=null, pjNom=null, pjType=null;
+  if(b.tf_doc){
+    try{
+      const { data } = sb.storage.from(DOC_BUCKET).getPublicUrl(b.tf_doc);
+      if(data && data.publicUrl){
+        const resp = await fetch(data.publicUrl);
+        if(resp.ok){
+          const blob = await resp.blob();
+          if(blob.size <= 3500000){
+            pjB64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.onerror=rej; fr.readAsDataURL(blob); });
+            const ext=(b.tf_doc.split('.').pop()||'pdf').toLowerCase();
+            pjNom='Taxe_fonciere_'+ANNEE_APP+'_'+(b.n||'').replace(/[^a-zA-Z0-9]+/g,'_')+'.'+ext;
+            pjType= blob.type || (ext==='pdf' ? 'application/pdf' : 'image/'+(ext==='jpg'?'jpeg':ext));
+          } else {
+            toast('⚠️ Avis de TF trop lourd ('+(blob.size/1048576).toFixed(1)+' Mo) — envoi sans pièce jointe');
+          }
+        }
+      }
+    }catch(e){ console.log('PJ TF:', e); }
+  }
+  const htmlFinal = pjB64 ? html + '<div style="max-width:640px;margin:10px auto 0;font-family:Arial,sans-serif;font-size:12px;color:#555;">📎 Une copie de l\'avis de taxe foncière est jointe à cet email.</div>' : html;
+  let r = await envoyerAvecPDF(email, subj, htmlFinal, BL.nom||'Gestion Locative', pjB64, pjNom, pjType);
   if(!r.ok) r = await envoyerViaEmailJS(email, subj, html, BL.nom||'Gestion Locative');
-  if(r.ok) toast('✅ Avis de taxe foncière ('+tf.toLocaleString('fr-FR')+' €) envoyé à '+email);
+  if(r.ok) toast(pjB64 ? '✅ Avis TF ('+tf.toLocaleString('fr-FR')+' €) envoyé à '+email+' avec l\'avis de taxe foncière joint' : '✅ Avis de taxe foncière ('+tf.toLocaleString('fr-FR')+' €) envoyé à '+email+(b.tf_doc?' (pièce jointe indisponible)':''));
   else toast('❌ Erreur envoi : '+(r.error||'vérifiez la configuration'));
 }
 
-async function envoyerAvecPDF(to, subject, html, fromName, pdfBase64, pdfFilename){
+async function envoyerAvecPDF(to, subject, html, fromName, pdfBase64, pdfFilename, pdfContentType){
   try{
     const resp=await fetch('/api/send-pdf',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({to,subject,html,fromName,pdfBase64,pdfFilename})
+      body:JSON.stringify({to,subject,html,fromName,pdfBase64,pdfFilename,pdfContentType})
     });
     let data={}; try{ data=await resp.json(); }catch(e){}
     if(resp.ok&&data.success) return {ok:true};
@@ -3049,6 +3092,7 @@ async function sendSingleQuittance(bienId){
       const sTF=(LD[CUR]||{})[b.id]||{}; const encTF=sTF.enc||b.loy;
       if(b.tf_refac>0 && encTF >= ((b.loy||0)+b.tf_refac-0.5)){
         b.tf_refac = null;
+        b.tf_doc = null;
         saveBiens();
         toast('🏛️ TF refacturée incluse dans cette quittance — remise à zéro pour les prochaines');
       } else if(b.tf_refac>0){
@@ -3553,6 +3597,7 @@ async function uploadDocument(){
       const bl = BIENS.find(x=>x.id===tfrBienId);
       if(bl){
         bl.tf_refac = tfrMont;
+        bl.tf_doc = path;   // on garde le lien vers l'avis de TF pour le joindre à l'email
         await saveBiens();
         msg += ` · 🏛️ ${tfrMont.toLocaleString('fr-FR')} € seront ajoutés à la prochaine quittance de ${bl.l||bl.n}`;
         // Proposer l'envoi immédiat de l'avis de refacturation au locataire
