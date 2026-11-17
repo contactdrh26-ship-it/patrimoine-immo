@@ -74,10 +74,25 @@ function loyerAttendu(b, m, y){
 }
 
 // ── HTML de l'avis d'échéance ──
-function genAvisHTML(b, bailleurNom, moisNom, annee, attendu){
+// ── Arriérés : mois passés marqués Partiel / Retard / Impayé où il manque de l'argent ──
+function calcArrieres(b, moisCourant, y, LOYMAP){
+  const list = [];
+  for(let mm = 0; mm < moisCourant; mm++){
+    const row = (LOYMAP[mm]||{})[b.id];
+    if(!row) continue;
+    if(!['par','ret','imp'].includes(row.statut)) continue;
+    const du = (loyerAttendu(b, mm, y) || 0) - (parseFloat(row.enc) || 0);
+    if(du > 0.5) list.push({ m: mm, du: Math.round(du) });
+  }
+  return list;
+}
+
+function genAvisHTML(b, bailleurNom, moisNom, annee, attendu, arr){
+  arr = arr || [];
   const chg = b.chg || 0;
   const tf = parseFloat(b.tf_refac) > 0 ? parseFloat(b.tf_refac) : 0;
-  const total = attendu + tf;
+  const arrTotal = arr.reduce((s,a)=>s+a.du, 0);
+  const total = attendu + tf + arrTotal;
   const loyerHC = Math.max(0, attendu - chg);
   const ref = `AVI-${annee}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(b.id).padStart(3,'0')}`;
   const fmt = n => n.toLocaleString('fr-FR') + ' €';
@@ -99,8 +114,14 @@ function genAvisHTML(b, bailleurNom, moisNom, annee, attendu){
         <tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;">Loyer hors charges</td><td style="text-align:right;border-bottom:1px solid #eef1f7;">${fmt(loyerHC)}</td></tr>
         <tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;">Charges</td><td style="text-align:right;border-bottom:1px solid #eef1f7;">${fmt(chg)}</td></tr>
         ${tf>0?`<tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;color:#8a5a00;"><b>Taxe foncière (refacturation annuelle)</b></td><td style="text-align:right;border-bottom:1px solid #eef1f7;color:#8a5a00;font-weight:bold;">${fmt(tf)}</td></tr>`:''}
+        ${arr.map(a=>`<tr><td style="padding:8px 0;border-bottom:1px solid #eef1f7;color:#a03030;"><b>Rappel — loyer ${MOIS_FR[a.m]} ${annee} (reste dû)</b></td><td style="text-align:right;border-bottom:1px solid #eef1f7;color:#a03030;font-weight:bold;">${fmt(a.du)}</td></tr>`).join('')}
         <tr><td style="padding:10px 0;font-weight:bold;font-size:15px;">TOTAL À RÉGLER</td><td style="text-align:right;font-weight:bold;font-size:15px;color:#003F87;">${fmt(total)}</td></tr>
       </table>
+      ${arrTotal>0?`<p style="font-size:12px;line-height:1.6;background:#fdeeee;border:1px solid #efc2c2;border-radius:6px;padding:10px 14px;color:#7a1f1f;">
+        ⚠️ Votre compte présente un <b>arriéré de ${fmt(arrTotal)}</b> au titre des loyers des mois précédents, détaillé ci-dessus.
+        Nous vous remercions de régulariser cette somme sans délai, en complément du loyer du mois en cours.
+        Si votre règlement a été effectué récemment, veuillez ne pas tenir compte de ce rappel.
+      </p>`:''}
       ${tf>0?`<p style="font-size:12px;line-height:1.6;background:#fff8e6;border:1px solid #f0dfa8;border-radius:6px;padding:10px 14px;color:#6b5500;">
         🏛️ Ce mois-ci, le total inclut la <b>refacturation annuelle de la taxe foncière</b> (${fmt(tf)}),
         conformément aux dispositions de votre bail commercial. Cette ligne n'apparaît qu'une fois par an.
@@ -145,12 +166,15 @@ module.exports = async (req, res) => {
     const moisKey = `${y}-${String(m+1).padStart(2,'0')}`;
 
     // Données
-    const [biens, emailsRows] = await Promise.all([
+    const [biens, emailsRows, loyersRows] = await Promise.all([
       sbGet('biens', 'select=*'),
-      sbGet('locataire_emails', 'select=*')
+      sbGet('locataire_emails', 'select=*'),
+      sbGet('loyers', 'select=*')
     ]);
     const emails = {};
     emailsRows.forEach(r => { emails[r.bien_id] = r.email; });
+    const LOYMAP = {};
+    loyersRows.forEach(r => { if(!LOYMAP[r.mois]) LOYMAP[r.mois] = {}; LOYMAP[r.mois][r.bien_id] = r; });
 
     // ── Mode test : un seul avis d'exemple, sans verrou ──
     if(req.query && req.query.test){
@@ -158,7 +182,7 @@ module.exports = async (req, res) => {
       const b = biens.find(x => x.l && loyerAttendu(x, m, y) > 0) || biens[0];
       const bailleur = BAILLEURS[b.e] || 'Bismuth Jacques';
       const att = loyerAttendu(b, m, y) || b.loy || 0;
-      await envoyerEmail(to, `[TEST] Avis d'échéance — ${moisNom} ${y}`, genAvisHTML(b, bailleur, moisNom, y, att), bailleur);
+      await envoyerEmail(to, `[TEST] Avis d'échéance — ${moisNom} ${y}`, genAvisHTML(b, bailleur, moisNom, y, att, calcArrieres(b, m, y, LOYMAP)), bailleur);
       return res.status(200).json({ test: true, envoye_a: to, exemple_bien: b.n });
     }
 
@@ -177,16 +201,16 @@ module.exports = async (req, res) => {
       if(!b.l){ ignores.push(`${b.n} (vacant)`); return; }
       if(att <= 0){ ignores.push(`${b.n} (0 € attendu)`); return; }
       if(!email){ ignores.push(`${b.n} (pas d'email)`); return; }
-      aEnvoyer.push({ b, email, att, bailleur: BAILLEURS[b.e] || 'Bismuth Jacques' });
+      aEnvoyer.push({ b, email, att, arr: calcArrieres(b, m, y, LOYMAP), bailleur: BAILLEURS[b.e] || 'Bismuth Jacques' });
     });
 
     // ── Envoi par paquets de 5 ──
     const envoyes = [], erreurs = [];
     for(let i = 0; i < aEnvoyer.length; i += 5){
       const paquet = aEnvoyer.slice(i, i+5);
-      await Promise.all(paquet.map(async ({ b, email, att, bailleur }) => {
+      await Promise.all(paquet.map(async ({ b, email, att, arr, bailleur }) => {
         try {
-          await envoyerEmail(email, `Avis d'échéance — ${moisNom} ${y}`, genAvisHTML(b, bailleur, moisNom, y, att), bailleur);
+          await envoyerEmail(email, `Avis d'échéance — ${moisNom} ${y}`, genAvisHTML(b, bailleur, moisNom, y, att, arr), bailleur);
           envoyes.push(`${b.l} (${email})`);
         } catch(e){
           erreurs.push(`${b.l}: ${String(e.message).slice(0,120)}`);
