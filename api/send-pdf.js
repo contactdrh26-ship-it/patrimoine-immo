@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "Variable GMAIL_APP_PASSWORD manquante dans Vercel (Settings → Environment Variables)" });
   }
 
-  const { to, subject, html, fromName, pdfBase64, pdfFilename } = req.body || {};
+  const { to, subject, html, fromName, pdfBase64, pdfFilename, pdfContentType } = req.body || {};
   if (!to || !subject) {
     return res.status(400).json({ error: 'Destinataire (to) et objet (subject) requis' });
   }
@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
       filename: pdfFilename || 'document.pdf',
       content: pdfBase64,
       encoding: 'base64',
-      contentType: 'application/pdf'
+      contentType: pdfContentType || 'application/pdf'
     });
   }
 
